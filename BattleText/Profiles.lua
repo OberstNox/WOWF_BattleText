@@ -132,7 +132,8 @@ function BT.InitializeProfilePage(page, label, button)
     local first = 1
     local names, rows = {}, {}
     local refreshList
-    local feedback = label(page, "", "GameFontHighlightSmall", 16, -282)
+    local profileHint = "Characters can share the same profile."
+    local feedback = label(page, profileHint, "GameFontHighlightSmall", 16, -276)
     feedback:SetWidth(318)
     feedback:SetJustifyH("LEFT")
     local input = CreateFrame("EditBox", nil, page)
@@ -185,7 +186,7 @@ function BT.InitializeProfilePage(page, label, button)
 
     local function submit(operation)
         local errorMessage = operation(input:GetText())
-        feedback:SetText(errorMessage or "")
+        feedback:SetText(errorMessage or profileHint)
         if not errorMessage then
             input:SetText("")
             input:ClearFocus()
@@ -225,7 +226,7 @@ function BT.InitializeProfilePage(page, label, button)
         end
         rename:SetEnabled(BT.activeProfile ~= DEFAULT)
         delete:SetEnabled(BT.activeProfile ~= DEFAULT)
-        feedback:SetText("")
+        feedback:SetText(profileHint)
         refreshList()
     end
 end

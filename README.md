@@ -8,6 +8,11 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.2.6
+
+- The dashboard groups shared settings and filters under **General**, and keeps per-area options separate from the **Screen layout** controls. An area shows its inherited text size until you override it.
+- Checkbox labels are clickable. The footer explains when NPC target damage is paused because you are in a group.
+
 ## 0.2.5
 
 - Enable **Custom text size** for any area under **Text Areas** to set its size independently. Turn it off to use the shared size under **General**. Custom sizes are saved in the active profile.

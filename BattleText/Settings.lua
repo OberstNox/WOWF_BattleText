@@ -57,7 +57,7 @@ local function label(parent, text, font, x, y)
     return region
 end
 
-local function button(parent, name, width, x, y, onClick)
+local function button(parent, name, width, x, y, onClick, font)
     local control = CreateFrame("Button", nil, parent)
     control:SetSize(width, 25)
     control:SetPoint("TOPLEFT", x, y)
@@ -70,7 +70,7 @@ local function button(parent, name, width, x, y, onClick)
     marker:SetPoint("BOTTOMLEFT", 0, 3)
     marker:SetWidth(2)
     marker:SetColorTexture(0.36, 0.86, 0.77)
-    local caption = control:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local caption = control:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
     caption:SetPoint("LEFT", 8, 0)
     caption:SetPoint("RIGHT", -8, 0)
     caption:SetWordWrap(false)
@@ -141,10 +141,11 @@ local function slider(parent, name, y, minimum, maximum, step, change, x, width)
     return setValue, control, caption
 end
 
-local function checkbox(parent, text, x, y, change)
+local function checkbox(parent, text, x, y, labelWidth, change)
     local check = CreateFrame("CheckButton", nil, parent)
     check:SetSize(24, 24)
     check:SetPoint("TOPLEFT", x, y)
+    check:SetHitRectInsets(0, -labelWidth, 0, 0)
     local outline = check:CreateTexture(nil, "BACKGROUND")
     outline:SetSize(16, 16)
     outline:SetPoint("CENTER")
@@ -254,7 +255,7 @@ function BT.InitializeSettings()
 
     local pages, tabs = {}, {}
     local activePage = 1
-    local restartPreview
+    local restartPreview, refreshArea
     for index, title in ipairs({ "General", "Text Areas", "Profiles" }) do
         local page = CreateFrame("Frame", nil, panel)
         page:SetSize(350, 310)
@@ -267,19 +268,24 @@ function BT.InitializeSettings()
                 section:SetShown(section == page)
                 tabs[i]:SetSelected(section == page)
             end
+            if index == 2 then
+                refreshArea()
+            end
             restartPreview()
         end)
         page:SetShown(index == 1)
     end
     tabs[1]:SetSelected(true)
     local general, areasPage, profilesPage = unpack(pages)
-    local setSize = slider(general, "Text size", -20, 16, 40, 1, function(value) BT.db.size = value end)
-    local setSpeed = slider(general, "Scroll speed", -75, 0.5, 2, 0.1, function(value) BT.db.speed = value end)
-    local setMinimum = slider(general, "Minimum amount", -130, 0, 1000, 10,
-        function(value) BT.db.minimumAmount = value end)
-    label(general, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 16, -174)
-    local holdCritical = checkbox(general, "Hold critical hits and heals", 14, -202,
+    label(general, "Text and motion", "GameFontNormal", 16, -16)
+    local setSize = slider(general, "Default text size", -43, 16, 40, 1, function(value) BT.db.size = value end)
+    local setSpeed = slider(general, "Scroll speed", -92, 0.5, 2, 0.1, function(value) BT.db.speed = value end)
+    local holdCritical = checkbox(general, "Hold critical hits and heals", 14, -136, 163,
         function(checked) BT.db.holdCritical = checked end)
+    label(general, "Filtering", "GameFontNormal", 16, -183)
+    local setMinimum = slider(general, "Minimum damage and healing", -210, 0, 1000, 10,
+        function(value) BT.db.minimumAmount = value end)
+    label(general, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 16, -255)
 
     local handles, renderers, worldPreview = {}, {}, {}
     local moving = CreateFrame("Frame", nil, UIParent)
@@ -312,19 +318,19 @@ function BT.InitializeSettings()
         end
     end)
 
-    local reset = button(areasPage, "Reset positions", 119, 152, -268)
-    button(areasPage, "Move text areas", 128, 16, -268, function()
+    label(areasPage, "Screen layout", "GameFontNormal", 16, -250)
+    local reset = button(areasPage, "Reset positions", 100, 234, -274, nil, "GameFontHighlightSmall")
+    button(areasPage, "Move text areas", 107, 16, -274, function()
         panel:Hide()
         moving:Show()
         for _, handle in pairs(handles) do
             handle:Show()
         end
-    end)
+    end, "GameFontHighlightSmall")
     local selectedArea = BT.areas[1]
     local areaButtons = {}
-    local refreshArea
     for index, area in ipairs(BT.areas) do
-        areaButtons[area.key] = button(areasPage, area.label, 146, 16, -18 - (index - 1) * 36, function()
+        areaButtons[area.key] = button(areasPage, area.label, 146, 16, -18 - (index - 1) * 33, function()
             selectedArea = area
             refreshArea()
             restartPreview()
@@ -339,7 +345,7 @@ function BT.InitializeSettings()
     end
 
     local areaTitle = label(areasPage, "", "GameFontNormal", 181, -24)
-    local visible = checkbox(areasPage, "Show this area", 178, -51, function(checked)
+    local visible = checkbox(areasPage, "Show this area", 178, -51, 106, function(checked)
         local key = selectedArea.key
         BT.db.areas[key].enabled = checked
         if not checked then
@@ -353,19 +359,20 @@ function BT.InitializeSettings()
         saved.motion = saved.motion == "arc" and selectedArea.circleSide and "circleDown" or nextMotion[saved.motion]
         refreshArea()
     end)
-    local swatch = button(areasPage, "Text color", 106, 181, -150)
+    local swatch = button(areasPage, "Text color", 149, 181, -150)
     local color = fill(swatch, 1, 1, 1)
     color:SetSize(12, 12)
     color:ClearAllPoints()
     color:SetPoint("RIGHT", swatch, "RIGHT", -8, 0)
     color:SetDrawLayer("OVERLAY")
     local profileRevision = 0
-    local customSize = checkbox(areasPage, "Custom text size", 178, -183, function(checked)
+    local customSize = checkbox(areasPage, "Custom text size", 178, -183, 118, function(checked)
         BT.db.areas[selectedArea.key].size = checked and BT.db.size or nil
         refreshArea()
     end)
     local setAreaSize, areaSizeSlider, areaSizeCaption = slider(areasPage, "Text size", -221, 16, 64, 1,
         function(value) BT.db.areas[selectedArea.key].size = value end, 181, 149)
+    local inheritedSize = label(areasPage, "", "GameFontHighlightSmall", 181, -224)
     refreshArea = function()
         local saved = BT.db.areas[selectedArea.key]
         areaTitle:SetText(selectedArea.label)
@@ -376,6 +383,8 @@ function BT.InitializeSettings()
         customSize:SetChecked(hasCustomSize)
         areaSizeSlider:SetShown(hasCustomSize)
         areaSizeCaption:SetShown(hasCustomSize)
+        inheritedSize:SetShown(not hasCustomSize)
+        inheritedSize:SetFormattedText("Uses default size (%g)", BT.db.size)
         setAreaSize(saved.size or BT.db.size)
         for key, control in pairs(areaButtons) do
             control:SetSelected(key == selectedArea.key)
@@ -401,7 +410,7 @@ function BT.InitializeSettings()
         })
     end)
 
-    button(areasPage, "Apply Circle Layout", 156, 16, -231, function()
+    button(areasPage, "Apply Circle Layout", 103, 127, -274, function()
         for _, area in ipairs(BT.areas) do
             if area.circleSide then
                 local saved = BT.db.areas[area.key]
@@ -413,7 +422,7 @@ function BT.InitializeSettings()
         end
         refreshArea()
         restartPreview()
-    end)
+    end, "GameFontHighlightSmall")
     reset:SetScript("OnClick", function()
         for _, area in ipairs(BT.areas) do
             local saved = BT.db.areas[area.key]
@@ -476,6 +485,8 @@ function BT.InitializeSettings()
             status:SetText("Live damage and healing received are unavailable on this client.")
         elseif not BT.hasTargetDamage then
             status:SetText("NPC target damage is unavailable on this client.")
+        elseif IsInGroup() then
+            status:SetText("NPC target damage is paused while you are in a group.")
         elseif BT.restricted.incoming or BT.restricted.healing or BT.restricted.outgoing then
             status:SetText("Forever withheld some live amounts. NPC target damage only runs solo.")
         else
