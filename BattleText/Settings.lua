@@ -1,4 +1,4 @@
-local _, BT = ...
+local addonName, BT = ...
 
 local ICON = "Interface\\AddOns\\BattleText\\Icon"
 
@@ -284,6 +284,7 @@ function BT.InitializeSettings()
     panel:SetPoint("CENTER")
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
+    panel:SetMovable(true)
     panel:EnableMouse(true)
     fill(panel, 0.048, 0.064, 0.091, 0.98)
     local border = CreateFrame("Frame", nil, panel)
@@ -305,12 +306,42 @@ function BT.InitializeSettings()
     local header = CreateFrame("Frame", nil, panel)
     header:SetSize(858, 54)
     header:SetPoint("TOPLEFT")
+    header:EnableMouse(true)
+    header:RegisterForDrag("LeftButton")
     fill(header, 0.075, 0.10, 0.14)
-    label(header, "BattleText", "GameFontNormalLarge", 18, -18):SetTextColor(0.74, 0.98, 0.92)
+    label(header, "BattleText", "GameFontNormalLarge", 18, -11):SetTextColor(0.74, 0.98, 0.92)
+    local metadata = C_AddOns and C_AddOns.GetAddOnMetadata
+    local author = metadata and metadata(addonName, "Author") or "OberstNox"
+    local version = metadata and metadata(addonName, "Version")
+    label(header, "by " .. author, "GameFontHighlightSmall", 18, -32):SetTextColor(0.66, 0.72, 0.79)
+    if version then
+        label(header, "v" .. version, "GameFontHighlightSmall", 708, -22):SetTextColor(0.66, 0.72, 0.79)
+    end
     local active = label(header, "", "GameFontHighlight", 152, -21)
     active:SetTextColor(0.78, 0.83, 0.90)
     button(header, CLOSE or "Close", 62, 780, -14, function() panel:Hide() end)
     tinsert(UISpecialFrames, panel:GetName())
+
+    local draggingDashboard
+    local function stopDashboardDrag()
+        if not draggingDashboard then
+            return
+        end
+        draggingDashboard = nil
+        panel:StopMovingOrSizing()
+        panel:SetUserPlaced(false)
+        local x, y = panel:GetCenter()
+        local centerX, centerY = UIParent:GetCenter()
+        if x and y and centerX and centerY then
+            local scale = panel:GetScale()
+            BattleTextDB.dashboardPosition = { x = x * scale - centerX, y = y * scale - centerY }
+        end
+    end
+    header:SetScript("OnDragStart", function()
+        draggingDashboard = true
+        panel:StartMoving()
+    end)
+    header:SetScript("OnDragStop", stopDashboardDrag)
 
     local sidebar = CreateFrame("Frame", nil, panel)
     sidebar:SetPoint("TOPLEFT", 16, -66)
@@ -521,7 +552,23 @@ function BT.InitializeSettings()
         end
     end)
     local function updateLayout()
-        panel:SetScale(math.min(1, UIParent:GetWidth() / 882, UIParent:GetHeight() / 444))
+        if not draggingDashboard then
+            local width, height = UIParent:GetWidth(), UIParent:GetHeight()
+            local scale = math.min(1, width / 882, height / 444)
+            if scale > 0 then
+                panel:SetScale(scale)
+                local saved = BattleTextDB.dashboardPosition
+                local x, y = 0, 0
+                if type(saved) == "table" and type(saved.x) == "number" and type(saved.y) == "number" then
+                    local maxX = math.max(0, (width - panel:GetWidth() * scale) / 2)
+                    local maxY = math.max(0, (height - panel:GetHeight() * scale) / 2)
+                    x = math.max(-maxX, math.min(maxX, saved.x))
+                    y = math.max(-maxY, math.min(maxY, saved.y))
+                end
+                panel:ClearAllPoints()
+                panel:SetPoint("CENTER", UIParent, "CENTER", x / scale, y / scale)
+            end
+        end
         for _, area in ipairs(BT.areas) do
             local handle = handles[area.key]
             if not handle.dragging then
@@ -589,6 +636,7 @@ function BT.InitializeSettings()
     end)
     panel:SetScript("OnShow", restartPreview)
     panel:SetScript("OnHide", function()
+        stopDashboardDrag()
         for _, renderer in pairs(renderers) do
             renderer:Clear()
         end

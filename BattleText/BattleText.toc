@@ -1,7 +1,8 @@
 ## Interface: 16001
 ## Title: BattleText
 ## Notes: Scrolling combat text with a live layout preview.
-## Version: 0.3.8
+## Version: 0.3.9
+## Author: OberstNox
 ## IconTexture: Interface\AddOns\BattleText\Icon
 ## SavedVariables: BattleTextDB
 

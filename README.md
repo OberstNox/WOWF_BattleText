@@ -8,6 +8,11 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.9
+
+- Drag the dashboard by its title bar to move it. The position is saved across sessions and shared by all profiles.
+- The title bar displays the installed version and credits OberstNox.
+
 ## 0.3.8
 
 - **NPC target damage** also displays reported outcomes such as Miss, Dodge, Parry, Block, Absorb and Immune. These labels appear even when a damage minimum is set. The client's target events can include attacks by pets or other players.
