@@ -8,6 +8,10 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.0
+
+- **General → Show NPC target damage in groups** lets the selected NPC's damage appear while grouped. This is off by default and saved per profile. NPC target damage can include hits from pets and other players.
+
 ## 0.2.9
 
 - Solo target damage retains confirmed NPC target eligibility if the client restricts target checks during the fight. Changing targets clears that eligibility.

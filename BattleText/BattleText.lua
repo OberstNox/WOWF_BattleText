@@ -53,6 +53,7 @@ function BT.NormalizeProfile(profile)
     db.speed = number(db.speed, 1, 0.5, 2)
     db.minimumAmount = number(db.minimumAmount, 0, 0, 1000)
     db.holdCritical = db.holdCritical == true
+    db.groupTargetDamage = db.groupTargetDamage == true
     local defaultMotion = db.scrollDown == true and "arc" or "up"
     db.areas = tableOrEmpty(db.areas)
     for _, area in ipairs(BT.areas) do
@@ -319,7 +320,7 @@ local function registerTargetDamage()
             return
         end
         targetDamage.wounds = targetDamage.wounds + 1
-        if IsInGroup() then
+        if IsInGroup() and not BT.db.groupTargetDamage then
             return
         end
         checkTarget()
@@ -369,9 +370,9 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
             local command = (input or ""):match("^%s*(.-)%s*$")
             if command == "status" then
                 local area = BT.db.areas.outgoing
-                print(("BattleText NPC target: %s; area %s; group %s; minimum %g. Events %d, wounds %d, accepted %d. Protected amount rejected: %s."):format(
+                print(("BattleText NPC target: %s; area %s; group %s; group display %s; minimum %g. Events %d, wounds %d, accepted %d. Protected amount rejected: %s."):format(
                     BT.hasTargetDamage and "registered" or "unavailable", area.enabled and "on" or "off",
-                    IsInGroup() and "yes" or "no", BT.db.minimumAmount,
+                    IsInGroup() and "yes" or "no", BT.db.groupTargetDamage and "on" or "off", BT.db.minimumAmount,
                     targetDamage.events, targetDamage.wounds, targetDamage.accepted,
                     BT.restricted.outgoing and "yes" or "no"))
                 return
