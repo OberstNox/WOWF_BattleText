@@ -8,6 +8,10 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.2.7
+
+- **Text Areas** always shows the selected area's size slider. Adjust it directly or choose **Use default** to return that area to the shared **General** size.
+
 ## 0.2.6
 
 - The dashboard groups shared settings and filters under **General**, and keeps per-area options separate from the **Screen layout** controls. An area shows its inherited text size until you override it.

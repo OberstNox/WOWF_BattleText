@@ -108,6 +108,7 @@ local function slider(parent, name, y, minimum, maximum, step, change, x, width)
     control:SetOrientation("HORIZONTAL")
     control:SetSize(width or 233, 18)
     control:SetPoint("TOPLEFT", x, y - 22)
+    control:EnableMouse(true)
     local track = control:CreateTexture(nil, "BACKGROUND")
     track:SetPoint("LEFT", 4, 0)
     track:SetPoint("RIGHT", -4, 0)
@@ -138,7 +139,7 @@ local function slider(parent, name, y, minimum, maximum, step, change, x, width)
         update(control, value)
         refreshing = false
     end
-    return setValue, control, caption
+    return setValue
 end
 
 local function checkbox(parent, text, x, y, labelWidth, change)
@@ -366,25 +367,23 @@ function BT.InitializeSettings()
     color:SetPoint("RIGHT", swatch, "RIGHT", -8, 0)
     color:SetDrawLayer("OVERLAY")
     local profileRevision = 0
-    local customSize = checkbox(areasPage, "Custom text size", 178, -183, 118, function(checked)
-        BT.db.areas[selectedArea.key].size = checked and BT.db.size or nil
+    local useDefault = button(areasPage, "Use default", 84, 181, -230, function()
+        BT.db.areas[selectedArea.key].size = nil
         refreshArea()
-    end)
-    local setAreaSize, areaSizeSlider, areaSizeCaption = slider(areasPage, "Text size", -221, 16, 64, 1,
-        function(value) BT.db.areas[selectedArea.key].size = value end, 181, 149)
-    local inheritedSize = label(areasPage, "", "GameFontHighlightSmall", 181, -224)
+    end, "GameFontHighlightSmall")
+    local setAreaSize = slider(areasPage, "Text size", -184, 16, 64, 1, function(value)
+        BT.db.areas[selectedArea.key].size = value
+        useDefault:Enable()
+    end, 181, 149)
+    local defaultSize = label(areasPage, "", "GameFontHighlightSmall", 270, -238)
     refreshArea = function()
         local saved = BT.db.areas[selectedArea.key]
         areaTitle:SetText(selectedArea.label)
         visible:SetChecked(saved.enabled)
         motion:SetText(motionLabels[saved.motion])
         color:SetColorTexture(unpack(saved.rgb))
-        local hasCustomSize = saved.size ~= nil
-        customSize:SetChecked(hasCustomSize)
-        areaSizeSlider:SetShown(hasCustomSize)
-        areaSizeCaption:SetShown(hasCustomSize)
-        inheritedSize:SetShown(not hasCustomSize)
-        inheritedSize:SetFormattedText("Uses default size (%g)", BT.db.size)
+        useDefault:SetEnabled(saved.size ~= nil)
+        defaultSize:SetFormattedText("Default: %g", BT.db.size)
         setAreaSize(saved.size or BT.db.size)
         for key, control in pairs(areaButtons) do
             control:SetSelected(key == selectedArea.key)
