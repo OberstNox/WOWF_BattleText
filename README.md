@@ -8,6 +8,10 @@ Type `/battletext` in game. Change text size, scroll speed and area colors while
 
 Use the **Up**, **Down** or **Arc** button beside each area to cycle through its motion. **Arc** bends damage text outward and downward while healing and XP scroll straight down. Use **Move text areas** to adjust where the text starts.
 
+## 0.1.5
+
+- **Combat status** displays **Combat started** and **Combat ended** as the player enters and leaves combat. The area can be moved, recolored and turned off, and both messages are shown in the preview.
+
 ## 0.1.4
 
 - **Loot received** shows your own item loot messages in a dedicated area. The game supplies the localized item message and any stack count. You can move the area, change its color and movement, or turn it off.

@@ -26,12 +26,13 @@ local function button(parent, name, width, x, y, onClick)
     return control
 end
 
-local function slider(parent, name, y, minimum, maximum, step, value, change)
-    local caption = label(parent, name, "GameFontHighlight", 24, y)
+local function slider(parent, name, y, minimum, maximum, step, value, change, x)
+    x = x or 24
+    local caption = label(parent, name, "GameFontHighlight", x, y)
     local control = CreateFrame("Slider", nil, parent, "BackdropTemplate")
     control:SetOrientation("HORIZONTAL")
     control:SetSize(233, 18)
-    control:SetPoint("TOPLEFT", 24, y - 22)
+    control:SetPoint("TOPLEFT", x, y - 22)
     local track = control:CreateTexture(nil, "BACKGROUND")
     track:SetPoint("LEFT", 4, 0)
     track:SetPoint("RIGHT", -4, 0)
@@ -139,8 +140,8 @@ function BT.InitializeSettings()
 
     slider(panel, "Text size", -67, 16, 40, 1, BT.db.size, function(value) BT.db.size = value end)
     slider(panel, "Scroll speed", -117, 0.5, 2, 0.1, BT.db.speed, function(value) BT.db.speed = value end)
-    slider(panel, "Minimum amount", -380, 0, 1000, 10, BT.db.minimumAmount,
-        function(value) BT.db.minimumAmount = value end)
+    slider(panel, "Minimum amount", -348, 0, 1000, 10, BT.db.minimumAmount,
+        function(value) BT.db.minimumAmount = value end, 282)
 
     local handles, renderers = {}, {}
     local moving = CreateFrame("Frame", nil, UIParent)
@@ -158,8 +159,8 @@ function BT.InitializeSettings()
         end
     end)
 
-    local reset = button(panel, "Reset positions", 119, 160, -333)
-    button(panel, "Move text areas", 128, 24, -333, function()
+    local reset = button(panel, "Reset positions", 119, 160, -370)
+    button(panel, "Move text areas", 128, 24, -370, function()
         panel:Hide()
         moving:Show()
         for _, handle in pairs(handles) do
@@ -253,6 +254,10 @@ function BT.InitializeSettings()
             renderers.experience:ShowMessage("+135 XP")
         elseif sequence % 4 == 3 then
             renderers.loot:ShowMessage("Linen Cloth x2")
+        elseif sequence % 8 == 2 then
+            renderers.combat:ShowMessage(BT.combatMessages.PLAYER_REGEN_DISABLED)
+        elseif sequence % 8 == 6 then
+            renderers.combat:ShowMessage(BT.combatMessages.PLAYER_REGEN_ENABLED)
         end
         if not BT.hasCombatText and not BT.hasUnitCombat then
             status:SetText("Live damage and healing are unavailable on this client.")

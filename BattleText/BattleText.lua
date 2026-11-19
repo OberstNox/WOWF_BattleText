@@ -6,6 +6,12 @@ BT.areas = {
     { key = "healing", label = "Healing received", x = 0, y = -165, rgb = { 0.38, 0.93, 0.72 }, format = "+%d" },
     { key = "experience", label = "XP gained", x = 0, y = 135, rgb = { 0.77, 0.62, 1 } },
     { key = "loot", label = "Loot received", x = 0, y = 225, rgb = { 1, 0.88, 0.56 } },
+    { key = "combat", label = "Combat status", x = 0, y = 55, rgb = { 0.57, 0.83, 1 } },
+}
+
+BT.combatMessages = {
+    PLAYER_REGEN_DISABLED = "Combat started",
+    PLAYER_REGEN_ENABLED = "Combat ended",
 }
 
 local MAX_LINES = 12
@@ -269,6 +275,9 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         loadLootPatterns()
         self:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN")
         self:RegisterEvent("CHAT_MSG_LOOT")
+        for combatEvent in pairs(BT.combatMessages) do
+            self:RegisterEvent(combatEvent)
+        end
         BT.hasCombatText = C_CombatText and C_CombatText.GetCurrentEventInfo
             and pcall(self.RegisterEvent, self, "COMBAT_TEXT_UPDATE")
         if not BT.hasCombatText then
@@ -280,6 +289,8 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         BT.live.experience:ShowMessage(first)
     elseif event == "CHAT_MSG_LOOT" then
         showLoot(first)
+    elseif BT.combatMessages[event] then
+        BT.live.combat:ShowMessage(BT.combatMessages[event])
     elseif event == "COMBAT_TEXT_UPDATE" then
         if secret(first) or type(first) ~= "string" then
             return
