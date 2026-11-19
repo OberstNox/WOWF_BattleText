@@ -171,7 +171,7 @@ local function place(area, handle, preview)
     handle:SetPoint("CENTER", UIParent, "CENTER", x, y)
     local anchor = BT.live[area.key].frame
     anchor:ClearAllPoints()
-    anchor:SetPoint("CENTER", handle, "CENTER")
+    anchor:SetPoint("CENTER", UIParent, "CENTER", x, y)
     if preview then
         local frame = preview.frame
         frame:ClearAllPoints()

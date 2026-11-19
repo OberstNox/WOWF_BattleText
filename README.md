@@ -8,6 +8,10 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.2.8
+
+- Live text anchors directly to the game screen when profiles change. Use `/battletext test` to show labeled samples in the active profile's enabled areas and check the in-game display independently of combat events.
+
 ## 0.2.7
 
 - **Text Areas** always shows the selected area's size slider. Adjust it directly or choose **Use default** to return that area to the shared **General** size.

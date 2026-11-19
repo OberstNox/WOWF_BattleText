@@ -335,7 +335,20 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
             BT.hasUnitCombat = pcall(self.RegisterUnitEvent, self, "UNIT_COMBAT", "player")
         end
         SLASH_BATTLETEXT1 = "/battletext"
-        SlashCmdList.BATTLETEXT = BT.ToggleSettings
+        SlashCmdList.BATTLETEXT = function(input)
+            if (input or ""):match("^%s*test%s*$") then
+                local count = 0
+                for _, area in ipairs(BT.areas) do
+                    if BT.db.areas[area.key].enabled then
+                        BT.live[area.key]:ShowMessage("Test: " .. area.label)
+                        count = count + 1
+                    end
+                end
+                print(("BattleText: testing %d enabled areas in profile %s."):format(count, BT.activeProfile))
+                return
+            end
+            BT.ToggleSettings()
+        end
     elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
         BT.live.experience:ShowMessage(first)
     elseif event == "CHAT_MSG_LOOT" then
