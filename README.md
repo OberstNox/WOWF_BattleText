@@ -8,6 +8,10 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.10
+
+- The dashboard uses charcoal panels, light text and orange accents.
+
 ## 0.3.9
 
 - Drag the dashboard by its title bar to move it. The position is saved across sessions and shared by all profiles.
