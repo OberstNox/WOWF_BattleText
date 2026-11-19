@@ -5,6 +5,7 @@ BT.areas = {
     { key = "outgoing", label = "Outgoing damage", x = 245, y = 45, rgb = { 1, 0.79, 0.43 }, format = "%d" },
     { key = "healing", label = "Healing received", x = 0, y = -165, rgb = { 0.38, 0.93, 0.72 }, format = "+%d" },
     { key = "experience", label = "XP gained", x = 0, y = 135, rgb = { 0.77, 0.62, 1 } },
+    { key = "loot", label = "Loot received", x = 0, y = 225, rgb = { 1, 0.88, 0.56 } },
 }
 
 local MAX_LINES = 12
@@ -122,7 +123,7 @@ function BT.CreateRenderer(parent, area, scale)
         local line = table.remove(self.pool)
         if not line then
             line = { text = frame:CreateFontString(nil, "OVERLAY") }
-            if area.key == "experience" then
+            if not area.format then
                 line.text:SetWidth(300 * scale)
                 line.text:SetWordWrap(true)
             end
@@ -200,6 +201,49 @@ local eventTypes = {
     PERIODIC_HEAL_CRIT = { "healing", 2, true },
 }
 
+local lootFormats = {
+    "LOOT_ITEM_SELF", "LOOT_ITEM_SELF_MULTIPLE",
+    "LOOT_ITEM_PUSHED_SELF", "LOOT_ITEM_PUSHED_SELF_MULTIPLE",
+}
+local lootPatterns = {}
+
+local function escapePattern(text)
+    return (text:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1"))
+end
+
+local function loadLootPatterns()
+    for _, name in ipairs(lootFormats) do
+        local template = _G[name]
+        if type(template) == "string" then
+            local parts, cursor = { "^" }, 1
+            while true do
+                local startPos, endPos, kind = template:find("%%[0-9]*%$?([sd])", cursor)
+                if not startPos then
+                    break
+                end
+                parts[#parts + 1] = escapePattern(template:sub(cursor, startPos - 1))
+                parts[#parts + 1] = kind == "d" and "%d+" or ".+"
+                cursor = endPos + 1
+            end
+            parts[#parts + 1] = escapePattern(template:sub(cursor))
+            parts[#parts + 1] = "$"
+            lootPatterns[#lootPatterns + 1] = table.concat(parts)
+        end
+    end
+end
+
+local function showLoot(message)
+    if secret(message) or type(message) ~= "string" or not message:find("|Hitem:", 1, true) then
+        return
+    end
+    for _, pattern in ipairs(lootPatterns) do
+        if message:match(pattern) then
+            BT.live.loot:ShowMessage(message)
+            return
+        end
+    end
+end
+
 BT.restricted = {}
 
 local function showLive(key, amount, critical)
@@ -222,7 +266,9 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
             BT.live[area.key] = BT.CreateRenderer(UIParent, area, 1)
         end
         BT.InitializeSettings()
+        loadLootPatterns()
         self:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN")
+        self:RegisterEvent("CHAT_MSG_LOOT")
         BT.hasCombatText = C_CombatText and C_CombatText.GetCurrentEventInfo
             and pcall(self.RegisterEvent, self, "COMBAT_TEXT_UPDATE")
         if not BT.hasCombatText then
@@ -232,6 +278,8 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         SlashCmdList.BATTLETEXT = BT.ToggleSettings
     elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
         BT.live.experience:ShowMessage(first)
+    elseif event == "CHAT_MSG_LOOT" then
+        showLoot(first)
     elseif event == "COMBAT_TEXT_UPDATE" then
         if secret(first) or type(first) ~= "string" then
             return

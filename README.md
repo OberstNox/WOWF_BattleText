@@ -8,6 +8,10 @@ Type `/battletext` in game. Change text size, scroll speed and area colors while
 
 Use the **Up**, **Down** or **Arc** button beside each area to cycle through its motion. **Arc** bends damage text outward and downward while healing and XP scroll straight down. Use **Move text areas** to adjust where the text starts.
 
+## 0.1.4
+
+- **Loot received** shows your own item loot messages in a dedicated area. The game supplies the localized item message and any stack count. You can move the area, change its color and movement, or turn it off.
+
 ## 0.1.3
 
 - **XP gained** displays the client's XP gain messages in a dedicated area above the character by default. It has its own visibility, color, movement and position settings. The preview includes a sample XP message, and the damage and healing minimum does not apply to XP.
