@@ -34,8 +34,8 @@ local function tableOrEmpty(value)
     return type(value) == "table" and value or {}
 end
 
-local function loadSettings()
-    local db = tableOrEmpty(BattleTextDB)
+function BT.NormalizeProfile(profile)
+    local db = tableOrEmpty(profile)
     db.size = number(db.size, 26, 16, 40)
     db.speed = number(db.speed, 1, 0.5, 2)
     db.minimumAmount = number(db.minimumAmount, 0, 0, 1000)
@@ -58,8 +58,7 @@ local function loadSettings()
         db.areas[area.key] = saved
     end
     db.scrollDown = nil
-    BattleTextDB = db
-    BT.db = db
+    return db
 end
 
 local function style(line, saved, scale)
@@ -271,7 +270,14 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
             return
         end
         self:UnregisterEvent(event)
-        loadSettings()
+        if not IsLoggedIn() then
+            self:RegisterEvent("PLAYER_LOGIN")
+            return
+        end
+    end
+    if event == "ADDON_LOADED" or event == "PLAYER_LOGIN" then
+        self:UnregisterEvent("PLAYER_LOGIN")
+        BT.LoadProfiles()
         BT.live = {}
         for _, area in ipairs(BT.areas) do
             BT.live[area.key] = BT.CreateRenderer(UIParent, area, 1)

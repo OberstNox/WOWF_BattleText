@@ -4,9 +4,15 @@
 
 Copy the `BattleText` folder into `World of Warcraft/_forever_/Interface/AddOns/` so the game can find `AddOns/BattleText/BattleText.toc`. Restart the client if BattleText is missing from the AddOns list.
 
-Type `/battletext` in game. Change text size, scroll speed and area colors while the preview plays. Select **Move text areas**, drag the handles in the game world, then choose **Done moving**. **Reset positions** restores the default locations. Settings are shared across characters.
+Type `/battletext` to open the dashboard. **General** controls text size, scroll speed, minimum amounts and critical hit pauses. In **Text Areas**, select an area to adjust its appearance. Select **Move text areas**, drag the handles in the game world, then choose **Done moving**. **Reset positions** restores the default locations for the active profile.
 
-Use the **Up**, **Down** or **Arc** button beside each area to cycle through its motion. **Arc** bends damage text outward and downward while healing and XP scroll straight down. Use **Move text areas** to adjust where the text starts.
+Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
+
+## 0.2.0
+
+- **Profiles** lets you select a profile, start with defaults, copy the active profile, rename it or delete it. Each character remembers its selection. Characters sharing a profile also share edits to that profile.
+- Existing settings become **Default**. Deleting a named profile switches characters using it to **Default**.
+- The live preview stays visible while you edit settings or switch profiles.
 
 ## 0.1.7
 

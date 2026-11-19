@@ -46,8 +46,8 @@ local function button(parent, name, width, x, y, onClick)
     return control
 end
 
-local function slider(parent, name, y, minimum, maximum, step, value, change, x)
-    x = x or 24
+local function slider(parent, name, y, minimum, maximum, step, change)
+    local x = 16
     local caption = label(parent, name, "GameFontHighlight", x, y)
     local control = CreateFrame("Slider", nil, parent, "BackdropTemplate")
     control:SetOrientation("HORIZONTAL")
@@ -69,13 +69,29 @@ local function slider(parent, name, y, minimum, maximum, step, value, change, x)
     control:SetScript("OnMouseWheel", function(self, delta)
         self:SetValue(self:GetValue() + delta * step)
     end)
+    local refreshing
     local function update(_, current)
-        change(current)
+        if not refreshing then
+            change(current)
+        end
         caption:SetFormattedText("%s   |cff8ce0d7%g|r", name, current)
     end
-    control:SetValue(value)
     control:SetScript("OnValueChanged", update)
-    update(control, value)
+    return function(value)
+        refreshing = true
+        control:SetValue(value)
+        update(control, value)
+        refreshing = false
+    end
+end
+
+local function checkbox(parent, text, x, y, change)
+    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    check:SetSize(24, 24)
+    check:SetPoint("TOPLEFT", x, y)
+    label(check, text, "GameFontHighlight", 27, -6)
+    check:SetScript("OnClick", function(self) change(self:GetChecked()) end)
+    return check
 end
 
 local function place(area, handle, preview)
@@ -137,20 +153,21 @@ end
 
 function BT.InitializeSettings()
     local panel = CreateFrame("Frame", "BattleTextSettings", UIParent)
-    panel:SetSize(650, 488)
+    panel:SetSize(758, 480)
     panel:SetPoint("CENTER")
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
     panel:EnableMouse(true)
     fill(panel, 0.045, 0.07, 0.09, 0.98)
     label(panel, "BattleText", "GameFontNormalHuge", 24, -19):SetTextColor(0.64, 0.96, 0.90)
+    local active = label(panel, "", "GameFontHighlight", 24, -53)
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -4, -4)
     tinsert(UISpecialFrames, panel:GetName())
 
     local preview = CreateFrame("Frame", nil, panel)
-    preview:SetPoint("TOPLEFT", 282, -60)
-    preview:SetSize(344, 264)
+    preview:SetPoint("TOPLEFT", 400, -112)
+    preview:SetSize(334, 310)
     fill(preview, 0.075, 0.11, 0.14)
     label(preview, "Live preview", "GameFontHighlight", 15, -14)
     local reticle = preview:CreateTexture(nil, "ARTWORK")
@@ -158,10 +175,30 @@ function BT.InitializeSettings()
     reticle:SetPoint("CENTER", 0, -7)
     reticle:SetColorTexture(0.33, 0.51, 0.57)
 
-    slider(panel, "Text size", -67, 16, 40, 1, BT.db.size, function(value) BT.db.size = value end)
-    slider(panel, "Scroll speed", -117, 0.5, 2, 0.1, BT.db.speed, function(value) BT.db.speed = value end)
-    slider(panel, "Minimum amount", -348, 0, 1000, 10, BT.db.minimumAmount,
-        function(value) BT.db.minimumAmount = value end, 282)
+    local pages, tabs = {}, {}
+    for index, title in ipairs({ "General", "Text Areas", "Profiles" }) do
+        local page = CreateFrame("Frame", nil, panel)
+        page:SetSize(350, 310)
+        page:SetPoint("TOPLEFT", 24, -112)
+        fill(page, 0.075, 0.11, 0.14)
+        pages[index] = page
+        tabs[index] = button(panel, title, 104, 24 + (index - 1) * 111, -77, function()
+            for i, section in ipairs(pages) do
+                section:SetShown(section == page)
+                tabs[i]:SetEnabled(section ~= page)
+            end
+        end)
+        page:SetShown(index == 1)
+    end
+    tabs[1]:Disable()
+    local general, areasPage, profilesPage = unpack(pages)
+    local setSize = slider(general, "Text size", -20, 16, 40, 1, function(value) BT.db.size = value end)
+    local setSpeed = slider(general, "Scroll speed", -75, 0.5, 2, 0.1, function(value) BT.db.speed = value end)
+    local setMinimum = slider(general, "Minimum amount", -130, 0, 1000, 10,
+        function(value) BT.db.minimumAmount = value end)
+    label(general, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 16, -174)
+    local holdCritical = checkbox(general, "Hold critical hits and heals", 14, -202,
+        function(checked) BT.db.holdCritical = checked end)
 
     local handles, renderers, worldPreview = {}, {}, {}
     local moving = CreateFrame("Frame", nil, UIParent)
@@ -194,59 +231,21 @@ function BT.InitializeSettings()
         end
     end)
 
-    local reset = button(panel, "Reset positions", 119, 160, -370)
-    button(panel, "Move text areas", 128, 24, -370, function()
+    local reset = button(areasPage, "Reset positions", 119, 152, -268)
+    button(areasPage, "Move text areas", 128, 16, -268, function()
         panel:Hide()
         moving:Show()
         for _, handle in pairs(handles) do
             handle:Show()
         end
     end)
-    local holdCritical = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
-    holdCritical:SetSize(24, 24)
-    holdCritical:SetPoint("TOPLEFT", 22, -404)
-    holdCritical:SetChecked(BT.db.holdCritical)
-    label(holdCritical, "Hold critical hits and heals", "GameFontHighlight", 27, -6)
-    holdCritical:SetScript("OnClick", function(self)
-        BT.db.holdCritical = self:GetChecked()
-    end)
-
+    local selectedArea = BT.areas[1]
+    local areaButtons = {}
+    local refreshArea
     for index, area in ipairs(BT.areas) do
-        local saved = BT.db.areas[area.key]
-        local y = -168 - (index - 1) * 31
-        local check = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
-        check:SetSize(24, 24)
-        check:SetPoint("TOPLEFT", 22, y)
-        check:SetChecked(saved.enabled)
-        label(check, area.label, "GameFontHighlight", 27, -6)
-        check:SetScript("OnClick", function(self)
-            saved.enabled = self:GetChecked()
-            if not saved.enabled then
-                BT.live[area.key]:Clear()
-                renderers[area.key]:Clear()
-            end
-        end)
-
-        button(panel, motionLabels[saved.motion], 62, 164, y, function(self)
-            saved.motion = nextMotion[saved.motion]
-            self:SetText(motionLabels[saved.motion])
-        end)
-
-        local swatch = CreateFrame("Button", nil, panel)
-        swatch:SetSize(24, 19)
-        swatch:SetPoint("TOPLEFT", 234, y - 2)
-        local color = fill(swatch, unpack(saved.rgb))
-        swatch:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
-        swatch:SetScript("OnClick", function()
-            local function apply(r, g, b)
-                saved.rgb[1], saved.rgb[2], saved.rgb[3] = r, g, b
-                color:SetColorTexture(r, g, b)
-            end
-            ColorPickerFrame:SetupColorPickerAndShow({
-                r = saved.rgb[1], g = saved.rgb[2], b = saved.rgb[3],
-                swatchFunc = function() apply(ColorPickerFrame:GetColorRGB()) end,
-                cancelFunc = function(previous) apply(previous.r, previous.g, previous.b) end,
-            })
+        areaButtons[area.key] = button(areasPage, area.label, 146, 16, -18 - (index - 1) * 36, function()
+            selectedArea = area
+            refreshArea()
         end)
         local renderer = BT.CreateRenderer(preview, area, 0.72)
         renderers[area.key] = renderer
@@ -257,6 +256,58 @@ function BT.InitializeSettings()
         worldPreview[area.key] = sample
     end
 
+    local areaTitle = label(areasPage, "", "GameFontNormal", 181, -24)
+    local visible = checkbox(areasPage, "Show this area", 178, -51, function(checked)
+        local key = selectedArea.key
+        BT.db.areas[key].enabled = checked
+        if not checked then
+            BT.live[key]:Clear()
+            renderers[key]:Clear()
+        end
+    end)
+    label(areasPage, "Movement", "GameFontHighlight", 181, -93)
+    local motion = button(areasPage, "", 106, 181, -111, function()
+        local saved = BT.db.areas[selectedArea.key]
+        saved.motion = nextMotion[saved.motion]
+        refreshArea()
+    end)
+    local swatch = button(areasPage, "Text color", 106, 181, -150)
+    local color = fill(swatch, 1, 1, 1)
+    color:SetSize(12, 12)
+    color:ClearAllPoints()
+    color:SetPoint("RIGHT", swatch, "RIGHT", -8, 0)
+    color:SetDrawLayer("OVERLAY")
+    local profileRevision = 0
+    refreshArea = function()
+        local saved = BT.db.areas[selectedArea.key]
+        areaTitle:SetText(selectedArea.label)
+        visible:SetChecked(saved.enabled)
+        motion:SetText(motionLabels[saved.motion])
+        color:SetColorTexture(unpack(saved.rgb))
+        for key, control in pairs(areaButtons) do
+            control:SetEnabled(key ~= selectedArea.key)
+        end
+    end
+    swatch:SetScript("OnClick", function()
+        local key = selectedArea.key
+        local saved = BT.db.areas[key]
+        local revision = profileRevision
+        local function apply(r, g, b)
+            if revision ~= profileRevision then
+                return
+            end
+            saved.rgb[1], saved.rgb[2], saved.rgb[3] = r, g, b
+            if selectedArea.key == key then
+                color:SetColorTexture(r, g, b)
+            end
+        end
+        ColorPickerFrame:SetupColorPickerAndShow({
+            r = saved.rgb[1], g = saved.rgb[2], b = saved.rgb[3],
+            swatchFunc = function() apply(ColorPickerFrame:GetColorRGB()) end,
+            cancelFunc = function(previous) apply(previous.r, previous.g, previous.b) end,
+        })
+    end)
+
     reset:SetScript("OnClick", function()
         for _, area in ipairs(BT.areas) do
             local saved = BT.db.areas[area.key]
@@ -264,21 +315,23 @@ function BT.InitializeSettings()
             place(area, handles[area.key], renderers[area.key])
         end
     end)
-    local display = CreateFrame("Frame")
-    display:RegisterEvent("DISPLAY_SIZE_CHANGED")
-    display:RegisterEvent("UI_SCALE_CHANGED")
-    display:SetScript("OnEvent", function()
+    local function updateLayout()
+        panel:SetScale(math.min(1, UIParent:GetWidth() / 782, UIParent:GetHeight() / 504))
         for _, area in ipairs(BT.areas) do
             local handle = handles[area.key]
             if not handle.dragging then
                 place(area, handle, renderers[area.key])
             end
         end
-    end)
+    end
+    local display = CreateFrame("Frame")
+    display:RegisterEvent("DISPLAY_SIZE_CHANGED")
+    display:RegisterEvent("UI_SCALE_CHANGED")
+    display:SetScript("OnEvent", updateLayout)
 
-    label(panel, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 282, -408)
-    local status = label(panel, "", "GameFontHighlightSmall", 24, -447)
-    status:SetWidth(602)
+    local refreshProfiles = BT.InitializeProfilePage(profilesPage, label, button)
+    local status = label(panel, "", "GameFontHighlightSmall", 24, -443)
+    status:SetWidth(710)
     status:SetJustifyH("LEFT")
     status:SetTextColor(0.73, 0.80, 0.84)
     local elapsed, sequence = 0, 0
@@ -305,6 +358,25 @@ function BT.InitializeSettings()
         end
     end)
     panel:Hide()
+
+    function BT.RefreshProfile()
+        profileRevision = profileRevision + 1
+        setSize(BT.db.size)
+        setSpeed(BT.db.speed)
+        setMinimum(BT.db.minimumAmount)
+        holdCritical:SetChecked(BT.db.holdCritical)
+        active:SetText("Active profile   " .. BT.activeProfile)
+        refreshArea()
+        refreshProfiles()
+        updateLayout()
+        for key, renderer in pairs(renderers) do
+            renderer:Clear()
+            worldPreview[key]:Clear()
+            BT.live[key]:Clear()
+        end
+        elapsed, sequence = 1, 0
+    end
+    BT.RefreshProfile()
 
     function BT.ToggleSettings()
         if moving:IsShown() then
