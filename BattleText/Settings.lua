@@ -58,11 +58,46 @@ local function label(parent, text, font, x, y)
 end
 
 local function button(parent, name, width, x, y, onClick)
-    local control = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    local control = CreateFrame("Button", nil, parent)
     control:SetSize(width, 25)
     control:SetPoint("TOPLEFT", x, y)
+    local surface = fill(control, 0.13, 0.17, 0.22)
+    local hover = control:CreateTexture(nil, "HIGHLIGHT")
+    hover:SetAllPoints()
+    hover:SetColorTexture(0.25, 0.78, 0.70, 0.13)
+    local marker = control:CreateTexture(nil, "ARTWORK")
+    marker:SetPoint("TOPLEFT", 0, -3)
+    marker:SetPoint("BOTTOMLEFT", 0, 3)
+    marker:SetWidth(2)
+    marker:SetColorTexture(0.36, 0.86, 0.77)
+    local caption = control:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    caption:SetPoint("LEFT", 8, 0)
+    caption:SetPoint("RIGHT", -8, 0)
+    caption:SetWordWrap(false)
+    control:SetFontString(caption)
     control:SetText(name)
     control:SetScript("OnClick", onClick)
+    local function update(self)
+        marker:SetShown(self.selected == true)
+        if self.selected then
+            surface:SetColorTexture(0.13, 0.27, 0.29)
+            caption:SetTextColor(0.80, 1, 0.96)
+        elseif self:IsEnabled() then
+            surface:SetColorTexture(0.13, 0.17, 0.22)
+            caption:SetTextColor(0.90, 0.93, 0.97)
+        else
+            surface:SetColorTexture(0.095, 0.12, 0.16)
+            caption:SetTextColor(0.50, 0.55, 0.62)
+        end
+    end
+    control:SetScript("OnEnable", update)
+    control:SetScript("OnDisable", update)
+    function control:SetSelected(selected)
+        self.selected = selected
+        self:SetEnabled(not selected)
+        update(self)
+    end
+    update(control)
     return control
 end
 
@@ -106,9 +141,18 @@ local function slider(parent, name, y, minimum, maximum, step, change)
 end
 
 local function checkbox(parent, text, x, y, change)
-    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    local check = CreateFrame("CheckButton", nil, parent)
     check:SetSize(24, 24)
     check:SetPoint("TOPLEFT", x, y)
+    local outline = check:CreateTexture(nil, "BACKGROUND")
+    outline:SetSize(16, 16)
+    outline:SetPoint("CENTER")
+    outline:SetColorTexture(0.21, 0.29, 0.36)
+    local mark = check:CreateTexture(nil, "ARTWORK")
+    mark:SetSize(10, 10)
+    mark:SetPoint("CENTER")
+    mark:SetColorTexture(0.36, 0.86, 0.77)
+    check:SetCheckedTexture(mark)
     label(check, text, "GameFontHighlight", 27, -6)
     check:SetScript("OnClick", function(self) change(self:GetChecked()) end)
     return check
@@ -175,22 +219,31 @@ end
 
 function BT.InitializeSettings()
     local panel = CreateFrame("Frame", "BattleTextSettings", UIParent)
-    panel:SetSize(758, 480)
+    panel:SetSize(858, 420)
     panel:SetPoint("CENTER")
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
     panel:EnableMouse(true)
-    fill(panel, 0.045, 0.07, 0.09, 0.98)
-    label(panel, "BattleText", "GameFontNormalHuge", 24, -19):SetTextColor(0.64, 0.96, 0.90)
-    local active = label(panel, "", "GameFontHighlight", 24, -53)
-    local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", -4, -4)
+    fill(panel, 0.048, 0.064, 0.091, 0.98)
+    local header = CreateFrame("Frame", nil, panel)
+    header:SetSize(858, 54)
+    header:SetPoint("TOPLEFT")
+    fill(header, 0.075, 0.10, 0.14)
+    label(header, "BattleText", "GameFontNormalLarge", 18, -18):SetTextColor(0.74, 0.98, 0.92)
+    local active = label(header, "", "GameFontHighlight", 152, -21)
+    active:SetTextColor(0.78, 0.83, 0.90)
+    button(header, CLOSE or "Close", 62, 780, -14, function() panel:Hide() end)
     tinsert(UISpecialFrames, panel:GetName())
 
+    local sidebar = CreateFrame("Frame", nil, panel)
+    sidebar:SetPoint("TOPLEFT", 16, -66)
+    sidebar:SetSize(120, 310)
+    fill(sidebar, 0.068, 0.089, 0.122)
+
     local preview = CreateFrame("Frame", nil, panel)
-    preview:SetPoint("TOPLEFT", 400, -112)
-    preview:SetSize(334, 310)
-    fill(preview, 0.075, 0.11, 0.14)
+    preview:SetPoint("TOPLEFT", 514, -66)
+    preview:SetSize(328, 310)
+    fill(preview, 0.075, 0.10, 0.14)
     label(preview, "Live preview", "GameFontHighlight", 15, -14)
     local previewCaption = label(preview, "", "GameFontHighlightSmall", 15, -37)
     local reticle = preview:CreateTexture(nil, "ARTWORK")
@@ -204,20 +257,20 @@ function BT.InitializeSettings()
     for index, title in ipairs({ "General", "Text Areas", "Profiles" }) do
         local page = CreateFrame("Frame", nil, panel)
         page:SetSize(350, 310)
-        page:SetPoint("TOPLEFT", 24, -112)
-        fill(page, 0.075, 0.11, 0.14)
+        page:SetPoint("TOPLEFT", 150, -66)
+        fill(page, 0.075, 0.10, 0.14)
         pages[index] = page
-        tabs[index] = button(panel, title, 104, 24 + (index - 1) * 111, -77, function()
+        tabs[index] = button(sidebar, title, 104, 8, -10 - (index - 1) * 33, function()
             activePage = index
             for i, section in ipairs(pages) do
                 section:SetShown(section == page)
-                tabs[i]:SetEnabled(section ~= page)
+                tabs[i]:SetSelected(section == page)
             end
             restartPreview()
         end)
         page:SetShown(index == 1)
     end
-    tabs[1]:Disable()
+    tabs[1]:SetSelected(true)
     local general, areasPage, profilesPage = unpack(pages)
     local setSize = slider(general, "Text size", -20, 16, 40, 1, function(value) BT.db.size = value end)
     local setSpeed = slider(general, "Scroll speed", -75, 0.5, 2, 0.1, function(value) BT.db.speed = value end)
@@ -313,7 +366,7 @@ function BT.InitializeSettings()
         motion:SetText(motionLabels[saved.motion])
         color:SetColorTexture(unpack(saved.rgb))
         for key, control in pairs(areaButtons) do
-            control:SetEnabled(key ~= selectedArea.key)
+            control:SetSelected(key == selectedArea.key)
         end
     end
     swatch:SetScript("OnClick", function()
@@ -357,7 +410,7 @@ function BT.InitializeSettings()
         end
     end)
     local function updateLayout()
-        panel:SetScale(math.min(1, UIParent:GetWidth() / 782, UIParent:GetHeight() / 504))
+        panel:SetScale(math.min(1, UIParent:GetWidth() / 882, UIParent:GetHeight() / 444))
         for _, area in ipairs(BT.areas) do
             local handle = handles[area.key]
             if not handle.dragging then
@@ -371,8 +424,8 @@ function BT.InitializeSettings()
     display:SetScript("OnEvent", updateLayout)
 
     local refreshProfiles = BT.InitializeProfilePage(profilesPage, label, button)
-    local status = label(panel, "", "GameFontHighlightSmall", 24, -443)
-    status:SetWidth(710)
+    local status = label(panel, "", "GameFontHighlightSmall", 18, -391)
+    status:SetWidth(820)
     status:SetJustifyH("LEFT")
     status:SetTextColor(0.73, 0.80, 0.84)
     local elapsed, sequence = 0, 0

@@ -8,6 +8,10 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.2.4
+
+- The dashboard uses a sidebar, flatter controls and a clear highlight for the selected section, text area and profile. The preview remains visible beside the settings.
+
 ## 0.2.3
 
 - **Text Areas → Apply Circle Layout** places incoming damage on the left and NPC target damage on the right. Both follow a downward curve around the center of the screen.

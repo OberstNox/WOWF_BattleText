@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: BattleText
 ## Notes: Scrolling combat text with a live layout preview.
-## Version: 0.2.3
+## Version: 0.2.4
 ## SavedVariables: BattleTextDB
 
 BattleText.lua
