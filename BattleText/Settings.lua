@@ -425,14 +425,15 @@ function BT.InitializeSettings()
     tabs[1]:SetSelected(true)
     local general, areasPage, profilesPage = unpack(pages)
     label(general, "Text and motion", "GameFontNormal", 16, -16)
-    local setSize = slider(general, "Default text size", -43, 16, 40, 1, function(value) BT.db.size = value end)
-    local setSpeed = slider(general, "Scroll speed", -92, 0.5, 2, 0.1, function(value) BT.db.speed = value end)
-    local holdCritical = checkbox(general, "Hold critical hits and heals", 14, -136, 163,
+    local setSize = slider(general, "Default text size", -40, 16, 40, 1, function(value) BT.db.size = value end)
+    local setSpeed = slider(general, "Scroll speed", -84, 0.5, 2, 0.1, function(value) BT.db.speed = value end)
+    local holdCritical = checkbox(general, "Hold critical hits and heals", 14, -126, 163,
         function(checked) BT.db.holdCritical = checked end)
-    label(general, "Filtering", "GameFontNormal", 16, -183)
-    local setMinimum = slider(general, "Minimum damage and healing", -210, 0, 1000, 10,
+    label(general, "Filtering", "GameFontNormal", 16, -164)
+    local setMinimum = slider(general, "Minimum damage and healing", -188, 0, 1000, 10,
         function(value) BT.db.minimumAmount = value end)
-    label(general, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 16, -255)
+    label(general, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 16, -233)
+    label(general, "Interface", "GameFontNormal", 16, -256)
     local minimapButton = checkbox(general, "Show minimap button", 14, -275, 140, function(checked)
         BattleTextDB.showMinimapButton = checked
         if BT.UpdateMinimapVisibility then
@@ -440,6 +441,7 @@ function BT.InitializeSettings()
         end
     end)
     minimapButton:SetChecked(BattleTextDB.showMinimapButton ~= false)
+    label(general, "Account-wide", "GameFontHighlightSmall", 184, -284):SetTextColor(0.67, 0.67, 0.67)
 
     local handles, renderers, worldPreview = {}, {}, {}
     local moving = CreateFrame("Frame", nil, UIParent)
@@ -483,8 +485,9 @@ function BT.InitializeSettings()
     end, "GameFontHighlightSmall")
     local selectedArea = BT.areas[1]
     local areaButtons = {}
+    label(areasPage, "Areas", "GameFontNormal", 16, -18)
     for index, area in ipairs(BT.areas) do
-        areaButtons[area.key] = button(areasPage, area.label, 146, 16, -18 - (index - 1) * 33, function()
+        areaButtons[area.key] = button(areasPage, area.label, 146, 16, -40 - (index - 1) * 31, function()
             selectedArea = area
             refreshArea()
             restartPreview()
@@ -498,7 +501,7 @@ function BT.InitializeSettings()
         worldPreview[area.key] = sample
     end
 
-    local areaTitle = label(areasPage, "", "GameFontNormal", 181, -24)
+    local areaTitle = label(areasPage, "", "GameFontNormal", 181, -18)
     local visible = checkbox(areasPage, "Show this area", 178, -51, 106, function(checked)
         local key = selectedArea.key
         BT.db.areas[key].enabled = checked
@@ -635,6 +638,23 @@ function BT.InitializeSettings()
     status:SetWidth(820)
     status:SetJustifyH("LEFT")
     status:SetTextColor(0.73, 0.73, 0.73)
+    local function refreshStatus()
+        if not BT.hasCombatText and not BT.hasUnitCombat then
+            status:SetText("Live damage and healing received are unavailable on this client.")
+        elseif activePage == 2 and selectedArea.key == "outgoing" then
+            if not BT.hasTargetDamage then
+                status:SetText("NPC target damage is unavailable on this client.")
+            elseif BT.restricted.outgoing then
+                status:SetText("Forever withheld some NPC damage amounts. This area can include hits from pets and other players.")
+            else
+                status:SetText("NPC target damage can include hits from pets and other players.")
+            end
+        elseif BT.restricted.incoming or BT.restricted.healing then
+            status:SetText("Forever withheld some incoming damage or healing amounts.")
+        else
+            status:SetText("")
+        end
+    end
     local elapsed, sequence = 0, 0
     local previewRenderer
     restartPreview = function()
@@ -643,6 +663,7 @@ function BT.InitializeSettings()
             previewRenderer = nil
         end
         elapsed, sequence = 1, 0
+        refreshStatus()
     end
     panel:SetScript("OnUpdate", function(_, delta)
         if previewRenderer and #previewRenderer.lines > 0 then
@@ -673,15 +694,7 @@ function BT.InitializeSettings()
         else
             showAreaSample(previewRenderer, area, critical)
         end
-        if not BT.hasCombatText and not BT.hasUnitCombat then
-            status:SetText("Live damage and healing received are unavailable on this client.")
-        elseif not BT.hasTargetDamage then
-            status:SetText("NPC target damage is unavailable on this client.")
-        elseif BT.restricted.incoming or BT.restricted.healing or BT.restricted.outgoing then
-            status:SetText("Forever withheld some live amounts. NPC target text may include hits by others.")
-        else
-            status:SetText("NPC target damage can include hits from pets and other players.")
-        end
+        refreshStatus()
     end)
     panel:SetScript("OnShow", restartPreview)
     panel:SetScript("OnHide", function()

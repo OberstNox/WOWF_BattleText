@@ -135,13 +135,14 @@ function BT.InitializeProfilePage(page, label, button)
     local first = 1
     local names, rows = {}, {}
     local refreshList
-    local profileHint = "Characters can share the same profile."
-    local feedback = label(page, profileHint, "GameFontHighlightSmall", 16, -276)
+    local profileHint = "Each character chooses a profile. Profiles can be shared."
+    label(page, "Saved profiles", "GameFontNormal", 16, -14)
+    local feedback = label(page, profileHint, "GameFontHighlightSmall", 16, -287)
     feedback:SetWidth(318)
     feedback:SetJustifyH("LEFT")
     local input = CreateFrame("EditBox", nil, page)
     input:SetSize(318, 24)
-    input:SetPoint("TOPLEFT", 16, -200)
+    input:SetPoint("TOPLEFT", 16, -219)
     input:SetFontObject(GameFontHighlight)
     input:SetTextInsets(8, 8, 0, 0)
     local inputSurface = input:CreateTexture(nil, "BACKGROUND")
@@ -155,21 +156,21 @@ function BT.InitializeProfilePage(page, label, button)
 
     for index = 1, ROWS do
         local offset = index - 1
-        rows[index] = button(page, "", 318, 16, -12 - offset * 29, function()
+        rows[index] = button(page, "", 318, 16, -34 - offset * 26, function()
             input:SetText("")
             input:ClearFocus()
             BT.SelectProfile(names[first + offset])
         end)
     end
-    local previous = button(page, "Previous", 84, 16, -158, function()
+    local previous = button(page, "Previous", 84, 16, -169, function()
         first = first - ROWS
         refreshList()
     end)
-    local nextPage = button(page, "Next", 84, 250, -158, function()
+    local nextPage = button(page, "Next", 84, 250, -169, function()
         first = first + ROWS
         refreshList()
     end)
-    local range = label(page, "", "GameFontHighlightSmall", 114, -165)
+    local range = label(page, "", "GameFontHighlightSmall", 114, -176)
     range:SetWidth(122)
     range:SetJustifyH("CENTER")
 
@@ -195,20 +196,22 @@ function BT.InitializeProfilePage(page, label, button)
             input:ClearFocus()
         end
     end
-    label(page, "Profile name", "GameFontHighlightSmall", 16, -186)
+    label(page, "Profile name", "GameFontHighlightSmall", 16, -204)
     local function create()
         submit(function(name) return BT.CreateProfile(name, false) end)
     end
     input:SetScript("OnEnterPressed", create)
-    button(page, "New", 72, 16, -234, create)
-    button(page, "Copy active", 85, 92, -234, function()
+    button(page, "New", 57, 16, -253, create, "GameFontHighlightSmall")
+    button(page, "Copy active", 79, 77, -253, function()
         submit(function(name) return BT.CreateProfile(name, true) end)
-    end)
-    local rename = button(page, "Rename", 75, 181, -234, function() submit(BT.RenameProfile) end)
-    local delete = button(page, "Delete", 74, 260, -234, function()
+    end, "GameFontHighlightSmall")
+    local rename = button(page, "Rename active", 87, 160, -253, function()
+        submit(BT.RenameProfile)
+    end, "GameFontHighlightSmall")
+    local delete = button(page, "Delete active", 83, 251, -253, function()
         input:ClearFocus()
         StaticPopup_Show("BATTLETEXT_DELETE_PROFILE", BT.activeProfile, nil, BT.activeProfile)
-    end)
+    end, "GameFontHighlightSmall")
     StaticPopupDialogs.BATTLETEXT_DELETE_PROFILE = {
         text = "Delete the BattleText profile '%s'? Characters using it will switch to Default.",
         button1 = DELETE,

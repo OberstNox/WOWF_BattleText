@@ -8,6 +8,11 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.13
+
+- **General** separates shared combat-text settings, filtering, and account-wide interface controls. **Text Areas** separates the area list and individual settings from the screen layout actions.
+- **Profiles** separates saved profiles from name and profile actions. The NPC target attribution note appears when editing that area.
+
 ## 0.3.12
 
 - The minimap button follows round and square minimaps when their shape and dimensions change. **General → Show minimap button** controls visibility for the account. You can still open the dashboard with `/battletext` or the WoW AddOns menu.
