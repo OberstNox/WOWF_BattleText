@@ -9,8 +9,6 @@ function BT.InitializeMinimapButton()
 
     local control = CreateFrame("Button", "BattleTextMinimapButton", Minimap)
     control:SetSize(28, 28)
-    control:SetFrameStrata("MEDIUM")
-    control:SetFrameLevel(Minimap:GetFrameLevel() + 8)
     control:SetNormalTexture(ICON)
     control:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight", "ADD")
     control:RegisterForClicks("LeftButtonUp")
@@ -20,29 +18,63 @@ function BT.InitializeMinimapButton()
     if type(angle) ~= "number" or not (angle >= -math.pi and angle <= math.pi) then
         angle = math.rad(135)
     end
+    local lastX, lastY, lastLevel
     local function placeButton()
-        control:ClearAllPoints()
-        control:SetPoint("CENTER", Minimap, "CENTER",
-            (Minimap:GetWidth() / 2 + 2) * math.cos(angle),
-            (Minimap:GetHeight() / 2 + 2) * math.sin(angle))
-    end
-    local function dragButton()
-        local x, y = GetCursorPosition()
-        local centerX, centerY = Minimap:GetCenter()
-        if centerX and centerY then
-            local scale = Minimap:GetEffectiveScale()
-            angle = math.atan2(y / scale - centerY, x / scale - centerX)
-            placeButton()
+        local shape
+        if GetMinimapShape then
+            local ok, reported = pcall(GetMinimapShape)
+            if ok and not BT.secret(reported) then
+                shape = reported
+            end
+        end
+        local x, y = math.cos(angle), math.sin(angle)
+        if shape == "SQUARE" then
+            local edge = math.max(math.abs(x), math.abs(y))
+            x, y = x / edge, y / edge
+        end
+        x = (Minimap:GetWidth() / 2 + 2) * x
+        y = (Minimap:GetHeight() / 2 + 2) * y
+        if x ~= lastX or y ~= lastY then
+            control:ClearAllPoints()
+            control:SetPoint("CENTER", Minimap, "CENTER", x, y)
+            lastX, lastY = x, y
+        end
+        local level = Minimap:GetFrameLevel() + 8
+        if level ~= lastLevel then
+            control:SetFrameLevel(level)
+            lastLevel = level
         end
     end
-    control:SetScript("OnClick", BT.ToggleSettings)
-    control:SetScript("OnDragStart", function(self)
-        GameTooltip:Hide()
-        self:SetScript("OnUpdate", dragButton)
+    local dragging, elapsed = false, 0
+    control:SetScript("OnUpdate", function(_, delta)
+        if dragging then
+            local x, y = GetCursorPosition()
+            local centerX, centerY = Minimap:GetCenter()
+            local scale = Minimap:GetEffectiveScale()
+            if centerX and centerY and scale > 0 then
+                local dx = (x / scale - centerX) / math.max(1, Minimap:GetWidth() / 2)
+                local dy = (y / scale - centerY) / math.max(1, Minimap:GetHeight() / 2)
+                if dx ~= 0 or dy ~= 0 then
+                    angle = math.atan2(dy, dx)
+                end
+            end
+            placeButton()
+        else
+            elapsed = elapsed + delta
+            if elapsed >= 0.5 then
+                elapsed = 0
+                placeButton()
+            end
+        end
     end)
-    local function stopDragging(self)
-        if self:GetScript("OnUpdate") then
-            self:SetScript("OnUpdate", nil)
+    control:SetScript("OnClick", BT.ToggleSettings)
+    control:SetScript("OnDragStart", function()
+        GameTooltip:Hide()
+        dragging = true
+    end)
+    local function stopDragging()
+        if dragging then
+            dragging = false
             BattleTextDB.minimapAngle = angle
         end
     end
@@ -55,7 +87,12 @@ function BT.InitializeMinimapButton()
         GameTooltip:Show()
     end)
     control:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    control:SetScript("OnShow", placeButton)
     placeButton()
+    function BT.UpdateMinimapVisibility()
+        control:SetShown(BattleTextDB.showMinimapButton ~= false)
+    end
+    BT.UpdateMinimapVisibility()
 end
 
 local motionLabels = { up = "Up", down = "Down", arc = "Arc", circleDown = "Circle Down" }
@@ -396,6 +433,13 @@ function BT.InitializeSettings()
     local setMinimum = slider(general, "Minimum damage and healing", -210, 0, 1000, 10,
         function(value) BT.db.minimumAmount = value end)
     label(general, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 16, -255)
+    local minimapButton = checkbox(general, "Show minimap button", 14, -275, 140, function(checked)
+        BattleTextDB.showMinimapButton = checked
+        if BT.UpdateMinimapVisibility then
+            BT.UpdateMinimapVisibility()
+        end
+    end)
+    minimapButton:SetChecked(BattleTextDB.showMinimapButton ~= false)
 
     local handles, renderers, worldPreview = {}, {}, {}
     local moving = CreateFrame("Frame", nil, UIParent)

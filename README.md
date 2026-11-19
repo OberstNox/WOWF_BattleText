@@ -8,6 +8,11 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.12
+
+- The minimap button follows round and square minimaps when their shape and dimensions change. **General → Show minimap button** controls visibility for the account. You can still open the dashboard with `/battletext` or the WoW AddOns menu.
+- BattleText can be installed alongside UI suites without adding dependencies. Round and square minimaps were tested with simulated frames. In-game verification is pending for the default UI, ElvUI, ElvUI with BenikUI, and EllesmereUI.
+
 ## 0.3.11
 
 - Combat text starts independently of the dashboard, falls back when the client rejects an event registration, and keeps existing lines when a new amount cannot be formatted.
