@@ -84,7 +84,11 @@ local function showSamples(renderers, sequence)
     else
         renderers.incoming:ShowAmount(critical and 486 or 162, critical)
     end
-    renderers.outgoing:ShowAmount(critical and 912 or 304, critical)
+    if sequence % 4 == 2 then
+        renderers.outgoing:ShowOutcome("Parry")
+    else
+        renderers.outgoing:ShowAmount(critical and 912 or 304, critical)
+    end
     renderers.healing:ShowAmount(critical and 642 or 214, critical)
     if sequence % 4 == 1 then
         renderers.experience:ShowMessage("+135 XP")
@@ -557,16 +561,22 @@ function BT.InitializeSettings()
         local area = activePage == 2 and selectedArea or BT.areas[(sequence - 1) % #BT.areas + 1]
         local critical = activePage == 2 and sequence % 2 == 0
             or activePage ~= 2 and math.floor((sequence - 1) / #BT.areas) % 2 == 1
+        local sampleCycle = activePage == 2 and sequence or math.floor((sequence - 1) / #BT.areas) + 1
+        local showParry = area.key == "outgoing" and sampleCycle % 3 == 0
         local caption = area.label
         local amounts = previewAmounts[area.key]
         if not BT.db.areas[area.key].enabled then
             caption = caption .. " (hidden)"
-        elseif amounts and amounts[critical and 2 or 1] < BT.db.minimumAmount then
+        elseif not showParry and amounts and amounts[critical and 2 or 1] < BT.db.minimumAmount then
             caption = caption .. " (below minimum)"
         end
         previewCaption:SetText(caption)
         previewRenderer = renderers[area.key]
-        showAreaSample(previewRenderer, area, critical)
+        if showParry then
+            previewRenderer:ShowOutcome("Parry")
+        else
+            showAreaSample(previewRenderer, area, critical)
+        end
         if not BT.hasCombatText and not BT.hasUnitCombat then
             status:SetText("Live damage and healing received are unavailable on this client.")
         elseif not BT.hasTargetDamage then

@@ -268,6 +268,7 @@ local outcomes = {
     BLOCK = "Block",
     ABSORB = "Absorb",
     RESIST = "Resist",
+    EVADE = "Evade",
     IMMUNE = "Immune",
     DEFLECT = "Deflect",
     REFLECT = "Reflect",
@@ -365,16 +366,25 @@ local function registerTargetDamage()
             return
         end
         targetDamage.events = targetDamage.events + 1
-        if secret(action) or action ~= "WOUND" then
+        if secret(action) or type(action) ~= "string" then
             return
         end
-        targetDamage.wounds = targetDamage.wounds + 1
+        local outcome = outcomes[action]
+        if action == "WOUND" then
+            targetDamage.wounds = targetDamage.wounds + 1
+        elseif not outcome then
+            return
+        end
         checkTarget()
         if not knownNPC then
             return
         end
-        targetDamage.accepted = targetDamage.accepted + 1
-        showLive("outgoing", amount, not secret(flag) and flag == "CRITICAL")
+        if outcome then
+            BT.live.outgoing:ShowOutcome(outcome)
+        else
+            targetDamage.accepted = targetDamage.accepted + 1
+            showLive("outgoing", amount, not secret(flag) and flag == "CRITICAL")
+        end
     end)
 end
 

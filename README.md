@@ -8,6 +8,10 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.8
+
+- **NPC target damage** also displays reported outcomes such as Miss, Dodge, Parry, Block, Absorb and Immune. These labels appear even when a damage minimum is set. The client's target events can include attacks by pets or other players.
+
 ## 0.3.7
 
 - NPC target damage uses white for normal hits by default and yellow for critical hits. Existing custom normal-hit colors are preserved.
