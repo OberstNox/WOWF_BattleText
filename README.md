@@ -8,6 +8,11 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.3
+
+- Click the **BattleText** minimap icon to open the dashboard. Drag the button along the minimap edge to reposition it.
+- `BattleText-CurseForge.png` is the project logo for CurseForge.
+
 ## 0.3.2
 
 - **Text Areas → Circle: On/Off** toggles the circle paths for both damage areas. Turning the layout off restores their previous motions and positions. A circle layout saved in an older version returns to the default upward paths if no previous layout was saved.

@@ -1,5 +1,59 @@
 local _, BT = ...
 
+local ICON = "Interface\\AddOns\\BattleText\\Icon"
+
+function BT.InitializeMinimapButton()
+    if not Minimap then
+        return
+    end
+
+    local control = CreateFrame("Button", "BattleTextMinimapButton", Minimap)
+    control:SetSize(28, 28)
+    control:SetFrameStrata("MEDIUM")
+    control:SetFrameLevel(Minimap:GetFrameLevel() + 8)
+    control:SetNormalTexture(ICON)
+    control:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight", "ADD")
+    control:RegisterForClicks("LeftButtonUp")
+    control:RegisterForDrag("LeftButton")
+
+    local angle = BattleTextDB.minimapAngle
+    if type(angle) ~= "number" or not (angle >= -math.pi and angle <= math.pi) then
+        angle = math.rad(135)
+    end
+    local function placeButton()
+        control:ClearAllPoints()
+        control:SetPoint("CENTER", Minimap, "CENTER",
+            (Minimap:GetWidth() / 2 + 2) * math.cos(angle),
+            (Minimap:GetHeight() / 2 + 2) * math.sin(angle))
+    end
+    local function dragButton()
+        local x, y = GetCursorPosition()
+        local centerX, centerY = Minimap:GetCenter()
+        if centerX and centerY then
+            local scale = Minimap:GetEffectiveScale()
+            angle = math.atan2(y / scale - centerY, x / scale - centerX)
+            placeButton()
+        end
+    end
+    control:SetScript("OnClick", BT.ToggleSettings)
+    control:SetScript("OnDragStart", function(self)
+        GameTooltip:Hide()
+        self:SetScript("OnUpdate", dragButton)
+    end)
+    control:SetScript("OnDragStop", function(self)
+        self:SetScript("OnUpdate", nil)
+        BattleTextDB.minimapAngle = angle
+    end)
+    control:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText("BattleText")
+        GameTooltip:AddLine("Click to open settings. Drag to move.", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    control:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    placeButton()
+end
+
 local motionLabels = { up = "Up", down = "Down", arc = "Arc", circleDown = "Circle Down" }
 local nextMotion = { up = "down", down = "arc", arc = "up", circleDown = "up" }
 

@@ -359,6 +359,7 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         end
         registerTargetDamage()
         BT.InitializeSettings()
+        BT.InitializeMinimapButton()
         loadLootPatterns()
         self:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN")
         self:RegisterEvent("CHAT_MSG_LOOT")
