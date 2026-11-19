@@ -8,6 +8,12 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.11
+
+- Combat text starts independently of the dashboard, falls back when the client rejects an event registration, and keeps existing lines when a new amount cannot be formatted.
+- Invalid saved character selections or dashboard coordinates use safe defaults. Hiding the minimap during a drag now ends the drag.
+- The WoW AddOns shortcut opens BattleText without committing the game's settings or bindings.
+
 ## 0.3.10
 
 - The dashboard uses charcoal panels, light text and orange accents.

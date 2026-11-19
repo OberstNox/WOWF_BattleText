@@ -40,10 +40,14 @@ function BT.InitializeMinimapButton()
         GameTooltip:Hide()
         self:SetScript("OnUpdate", dragButton)
     end)
-    control:SetScript("OnDragStop", function(self)
-        self:SetScript("OnUpdate", nil)
-        BattleTextDB.minimapAngle = angle
-    end)
+    local function stopDragging(self)
+        if self:GetScript("OnUpdate") then
+            self:SetScript("OnUpdate", nil)
+            BattleTextDB.minimapAngle = angle
+        end
+    end
+    control:SetScript("OnDragStop", stopDragging)
+    control:SetScript("OnHide", stopDragging)
     control:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("BattleText")
@@ -559,7 +563,8 @@ function BT.InitializeSettings()
                 panel:SetScale(scale)
                 local saved = BattleTextDB.dashboardPosition
                 local x, y = 0, 0
-                if type(saved) == "table" and type(saved.x) == "number" and type(saved.y) == "number" then
+                if type(saved) == "table" and type(saved.x) == "number" and type(saved.y) == "number"
+                    and saved.x == saved.x and saved.y == saved.y then
                     local maxX = math.max(0, (width - panel:GetWidth() * scale) / 2)
                     local maxY = math.max(0, (height - panel:GetHeight() * scale) / 2)
                     x = math.max(-maxX, math.min(maxX, saved.x))
@@ -680,19 +685,9 @@ function BT.InitializeSettings()
         logo:SetTexture(ICON)
         label(page, "BattleText", "GameFontNormalLarge", 76, -25)
         label(page, "Customize combat text, screen layout and profiles.", "GameFontHighlightSmall", 76, -47)
-        local notice = label(page, "", "GameFontHighlightSmall", 20, -110)
         button(page, "Open BattleText", 148, 20, -76, function()
-            if SettingsPanel and SettingsPanel:IsShown() and SettingsPanel.Close then
-                if SettingsPanel:HasUnappliedSettings() then
-                    notice:SetText("Apply your pending WoW settings first.")
-                    return
-                end
-                SettingsPanel:Close(true)
-            end
-            notice:SetText("")
             BT.ToggleSettings(true)
         end)
-        page:SetScript("OnShow", function() notice:SetText("") end)
         local category = Settings.RegisterCanvasLayoutCategory(page, "BattleText")
         Settings.RegisterAddOnCategory(category)
     end

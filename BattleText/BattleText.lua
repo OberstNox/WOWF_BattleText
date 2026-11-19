@@ -138,11 +138,14 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
             local line = renderer.lines[i]
             local x, y = position(line, line.age / 1.65, motion)
             if not line.height then
-                local measured = not line.protected and line.text.GetStringHeight and line.text:GetStringHeight()
-                if secret(measured) or type(measured) ~= "number" then
-                    measured = line.fontSize
+                local height = line.fontSize
+                if not line.protected and line.text.GetStringHeight then
+                    local ok, measured = pcall(line.text.GetStringHeight, line.text)
+                    if ok and not secret(measured) and type(measured) == "number" and measured == measured then
+                        height = math.max(height, measured)
+                    end
                 end
-                line.height = math.max(measured, line.fontSize)
+                line.height = height
             end
             local halfHeight = line.height / 2
             local travel = y * direction
@@ -192,9 +195,6 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
         if not saved.enabled then
             return true
         end
-        if #self.lines == MAX_LINES then
-            recycle(self, 1)
-        end
         local line = table.remove(self.pool)
         if not line then
             line = { text = frame:CreateFontString(nil, "OVERLAY") }
@@ -214,6 +214,9 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
             self.pool[#self.pool + 1] = line
             return false
         end
+        if #self.lines == MAX_LINES then
+            recycle(self, 1)
+        end
         self.nextLane = ((self.nextLane or -1) + 1) % 3
         line.lane = self.nextLane
         line.age = 0
@@ -228,7 +231,7 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
     function renderer:ShowAmount(amount, critical)
         local protected = secret(amount)
         if not protected then
-            if type(amount) ~= "number" or amount <= 0 then
+            if type(amount) ~= "number" or amount ~= amount or amount <= 0 or amount == math.huge then
                 return false
             end
             if amount < BT.db.minimumAmount then
@@ -338,11 +341,16 @@ end
 
 local targetDamage = { events = 0, wounds = 0, accepted = 0 }
 
+local function register(method, frame, event, ...)
+    local ok, registered = pcall(method, frame, event, ...)
+    return ok and registered == true
+end
+
 local function registerTargetDamage()
     local targetEvents = CreateFrame("Frame")
-    BT.hasTargetDamage = pcall(targetEvents.RegisterUnitEvent, targetEvents, "UNIT_COMBAT", "target")
+    BT.hasTargetDamage = register(targetEvents.RegisterUnitEvent, targetEvents, "UNIT_COMBAT", "target")
     if not BT.hasTargetDamage then
-        BT.hasTargetDamage = pcall(targetEvents.RegisterEvent, targetEvents, "UNIT_COMBAT")
+        BT.hasTargetDamage = register(targetEvents.RegisterEvent, targetEvents, "UNIT_COMBAT")
     end
     targetEvents:RegisterEvent("PLAYER_TARGET_CHANGED")
     local knownNPC
@@ -406,11 +414,12 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         BT.LoadProfiles()
         BT.live = {}
         for _, area in ipairs(BT.areas) do
-            BT.live[area.key] = BT.CreateRenderer(UIParent, area, 1)
+            local renderer = BT.CreateRenderer(UIParent, area, 1)
+            local saved = BT.db.areas[area.key]
+            renderer.frame:SetPoint("CENTER", UIParent, "CENTER", saved.x, saved.y)
+            BT.live[area.key] = renderer
         end
         registerTargetDamage()
-        BT.InitializeSettings()
-        BT.InitializeMinimapButton()
         loadLootPatterns()
         self:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN")
         self:RegisterEvent("CHAT_MSG_LOOT")
@@ -418,9 +427,9 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
             self:RegisterEvent(combatEvent)
         end
         BT.hasCombatText = C_CombatText and C_CombatText.GetCurrentEventInfo
-            and pcall(self.RegisterEvent, self, "COMBAT_TEXT_UPDATE")
+            and register(self.RegisterEvent, self, "COMBAT_TEXT_UPDATE")
         if not BT.hasCombatText then
-            BT.hasUnitCombat = pcall(self.RegisterUnitEvent, self, "UNIT_COMBAT", "player")
+            BT.hasUnitCombat = register(self.RegisterUnitEvent, self, "UNIT_COMBAT", "player")
         end
         SLASH_BATTLETEXT1 = "/battletext"
         SlashCmdList.BATTLETEXT = function(input)
@@ -445,8 +454,14 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
                 print(("BattleText: testing %d enabled areas in profile %s."):format(count, BT.activeProfile))
                 return
             end
-            BT.ToggleSettings()
+            if BT.ToggleSettings then
+                BT.ToggleSettings()
+            else
+                print("BattleText: the settings window could not be initialized.")
+            end
         end
+        BT.InitializeSettings()
+        BT.InitializeMinimapButton()
     elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
         BT.live.experience:ShowMessage(first)
     elseif event == "CHAT_MSG_LOOT" then
@@ -482,7 +497,7 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
             end
             showLive(info[1], value, info[3])
         end
-    elseif event == "UNIT_COMBAT" and not secret(action) then
+    elseif event == "UNIT_COMBAT" and not secret(action) and type(action) == "string" then
         local critical = not secret(descriptor) and descriptor == "CRITICAL"
         if action == "WOUND" then
             showLive("incoming", amount, critical)

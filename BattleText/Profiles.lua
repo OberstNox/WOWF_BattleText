@@ -17,7 +17,9 @@ end
 local function activate(name)
     BT.activeProfile = name
     BT.db = store.profiles[name]
-    store.characters[characterKey] = name
+    if characterKey then
+        store.characters[characterKey] = name
+    end
     if BT.RefreshProfile then
         BT.RefreshProfile()
     end
@@ -38,10 +40,11 @@ function BT.LoadProfiles()
         end
     end
     local name, realm = UnitFullName("player")
-    characterKey = (realm and realm ~= "" and realm or GetNormalizedRealmName()) .. ":" .. name
+    realm = realm and realm ~= "" and realm or GetNormalizedRealmName()
+    characterKey = type(name) == "string" and name ~= "" and type(realm) == "string" and (realm .. ":" .. name) or nil
     BattleTextDB, store = saved, saved
-    local selected = saved.characters[characterKey]
-    activate(saved.profiles[selected] and selected or DEFAULT)
+    local selected = characterKey and saved.characters[characterKey]
+    activate(type(selected) == "string" and saved.profiles[selected] and selected or DEFAULT)
 end
 
 function BT.ProfileNames()
