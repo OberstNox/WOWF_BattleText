@@ -395,11 +395,13 @@ function BT.InitializeSettings()
         previewRenderer = renderers[area.key]
         showAreaSample(previewRenderer, area, critical)
         if not BT.hasCombatText and not BT.hasUnitCombat then
-            status:SetText("Live damage and healing are unavailable on this client.")
-        elseif BT.restricted.incoming or BT.restricted.healing then
-            status:SetText("Forever withheld some live amounts. Outgoing damage is preview-only.")
+            status:SetText("Live damage and healing received are unavailable on this client.")
+        elseif not BT.hasTargetDamage then
+            status:SetText("NPC target damage is unavailable on this client.")
+        elseif BT.restricted.incoming or BT.restricted.healing or BT.restricted.outgoing then
+            status:SetText("Forever withheld some live amounts. NPC target damage only runs solo.")
         else
-            status:SetText("Outgoing damage is preview-only.")
+            status:SetText("NPC target damage only runs solo. It can include hits from pets or other players.")
         end
     end)
     panel:SetScript("OnShow", restartPreview)

@@ -2,7 +2,7 @@ local addonName, BT = ...
 
 BT.areas = {
     { key = "incoming", label = "Incoming damage", x = -245, y = 45, rgb = { 1, 0.48, 0.45 }, format = "-%d" },
-    { key = "outgoing", label = "Outgoing damage", x = 245, y = 45, rgb = { 1, 0.79, 0.43 }, format = "%d" },
+    { key = "outgoing", label = "NPC target damage", x = 245, y = 45, rgb = { 1, 0.79, 0.43 }, format = "%d" },
     { key = "healing", label = "Healing received", x = 0, y = -165, rgb = { 0.38, 0.93, 0.72 }, format = "+%d" },
     { key = "experience", label = "XP gained", x = 0, y = 135, rgb = { 0.77, 0.62, 1 } },
     { key = "loot", label = "Loot received", x = 0, y = 225, rgb = { 1, 0.88, 0.56 } },
@@ -262,6 +262,22 @@ local function showLive(key, amount, critical)
     end
 end
 
+local function registerTargetDamage()
+    local targetEvents = CreateFrame("Frame")
+    BT.hasTargetDamage = pcall(targetEvents.RegisterUnitEvent, targetEvents, "UNIT_COMBAT", "target")
+    targetEvents:SetScript("OnEvent", function(_, _, unit, action, flag, amount)
+        if secret(unit) or unit ~= "target" or secret(action) or action ~= "WOUND" or IsInGroup() then
+            return
+        end
+        local attackable = UnitCanAttack("player", "target")
+        local playerControlled = UnitPlayerControlled("target")
+        if secret(attackable) or not attackable or secret(playerControlled) or playerControlled then
+            return
+        end
+        showLive("outgoing", amount, not secret(flag) and flag == "CRITICAL")
+    end)
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", function(self, event, first, action, descriptor, amount)
@@ -282,6 +298,7 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         for _, area in ipairs(BT.areas) do
             BT.live[area.key] = BT.CreateRenderer(UIParent, area, 1)
         end
+        registerTargetDamage()
         BT.InitializeSettings()
         loadLootPatterns()
         self:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN")
