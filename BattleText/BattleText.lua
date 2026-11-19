@@ -2,7 +2,8 @@ local addonName, BT = ...
 
 BT.areas = {
     { key = "incoming", label = "Incoming damage", x = -245, y = 45, rgb = { 1, 0.48, 0.45 }, format = "-%d", circleSide = -1 },
-    { key = "outgoing", label = "NPC target damage", x = 245, y = 45, rgb = { 1, 0.79, 0.43 }, format = "%d", circleSide = 1 },
+    { key = "outgoing", label = "NPC target damage", x = 245, y = 45, rgb = { 1, 1, 1 },
+        criticalRGB = { 1, 0.86, 0.12 }, format = "%d", circleSide = 1 },
     { key = "healing", label = "Healing received", x = 0, y = -165, rgb = { 0.38, 0.93, 0.72 }, format = "+%d" },
     { key = "experience", label = "XP gained", x = 0, y = 135, rgb = { 0.77, 0.62, 1 } },
     { key = "loot", label = "Loot received", x = 0, y = 225, rgb = { 1, 0.88, 0.56 } },
@@ -59,6 +60,9 @@ function BT.NormalizeProfile(profile)
     for _, area in ipairs(BT.areas) do
         local saved = tableOrEmpty(db.areas[area.key])
         local rgb = tableOrEmpty(saved.rgb)
+        if not db.damageColorsUpdated and area.key == "outgoing" and rgb[1] == 1 and rgb[2] == 0.79 and rgb[3] == 0.43 then
+            rgb = area.rgb
+        end
         saved.rgb = {}
         for i = 1, 3 do
             saved.rgb[i] = number(rgb[i], area.rgb[i], 0, 1)
@@ -82,6 +86,7 @@ function BT.NormalizeProfile(profile)
         db.areas[area.key] = saved
     end
     db.scrollDown = nil
+    db.damageColorsUpdated = true
     return db
 end
 
@@ -92,7 +97,7 @@ local function style(line, saved, scale)
         line.fontSize = size
         line.height = nil
     end
-    line.text:SetTextColor(unpack(saved.rgb))
+    line.text:SetTextColor(unpack(line.criticalColor or saved.rgb))
 end
 
 local function recycle(renderer, index)
@@ -199,6 +204,7 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
             end
         end
         line.emphasis = emphasis or 1
+        line.criticalColor = critical and area.criticalRGB or nil
         line.protected = secret(value)
         line.height = nil
         style(line, saved, scale)
