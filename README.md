@@ -8,6 +8,11 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.4
+
+- Larger damage crits use larger text, up to 180% of the area's normal size. If the client protects the damage amount, the crit uses a fixed emphasis.
+- Messages are spaced within each text area. In busy bursts, older lines that would be pushed too far from the path are hidden.
+
 ## 0.3.3
 
 - Click the **BattleText** minimap icon to open the dashboard. Drag the button along the minimap edge to reposition it.

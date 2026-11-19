@@ -86,8 +86,12 @@ function BT.NormalizeProfile(profile)
 end
 
 local function style(line, saved, scale)
-    local size = (saved.size or BT.db.size) * scale * (line.critical and 1.28 or 1)
-    line.text:SetFont(FONT, math.floor(size + 0.5), "OUTLINE")
+    local size = math.floor((saved.size or BT.db.size) * scale * line.emphasis + 0.5)
+    if line.fontSize ~= size then
+        line.text:SetFont(FONT, size, "OUTLINE")
+        line.fontSize = size
+        line.height = nil
+    end
     line.text:SetTextColor(unpack(saved.rgb))
 end
 
@@ -102,18 +106,16 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetSize(1, 1)
     local renderer = { frame = frame, lines = {}, pool = {}, area = area }
-    local function position(line, progress)
+    local function position(line, progress, motion)
         local x = (line.lane - 1) * 36
         local y = 66 * progress + line.lane * 20
-        local motion = BT.db.areas[area.key].motion
         if motion == "circleDown" and area.circleSide then
             local angle = CIRCLE_START + CIRCLE_SWEEP * progress
             local pathScale = circleScale or scale
             x = area.circleSide * (CIRCLE_RADIUS_X * math.sin(angle) - CIRCLE_START_X) * pathScale
                 + (line.lane - 1) * 12 * scale
             y = (CIRCLE_RADIUS_Y * math.cos(angle) - CIRCLE_START_Y) * pathScale
-            line.text:SetPoint("CENTER", frame, "CENTER", x, y)
-            return
+            return x, y
         end
         if motion == "arc" then
             x = x + (area.circleSide or 0) * 32 * math.sin(progress * math.pi)
@@ -121,7 +123,33 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
         if motion ~= "up" then
             y = -y
         end
-        line.text:SetPoint("CENTER", frame, "CENTER", x * scale, y * scale)
+        return x * scale, y * scale
+    end
+
+    local function arrange(motion)
+        local direction = motion == "up" and 1 or -1
+        local nextEdge
+        for i = #renderer.lines, 1, -1 do
+            local line = renderer.lines[i]
+            local x, y = position(line, line.age / 1.65, motion)
+            if not line.height then
+                local measured = not line.protected and line.text.GetStringHeight and line.text:GetStringHeight()
+                if secret(measured) or type(measured) ~= "number" then
+                    measured = line.fontSize
+                end
+                line.height = math.max(measured, line.fontSize)
+            end
+            local halfHeight = line.height / 2
+            local travel = y * direction
+            local spaced = nextEdge and math.max(travel, nextEdge + halfHeight) or travel
+            if spaced - travel <= 130 * scale then
+                line.text:SetPoint("CENTER", frame, "CENTER", x, spaced * direction)
+                line.text:Show()
+                nextEdge = spaced + halfHeight + 4 * scale
+            else
+                line.text:Hide()
+            end
+        end
     end
 
     frame:SetScript("OnUpdate", function(self, elapsed)
@@ -136,12 +164,13 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
             else
                 style(line, saved, scale)
                 local progress = line.age / 1.65
-                position(line, progress)
                 line.text:SetAlpha(math.min(1, (1 - progress) * 3.5))
             end
         end
         if #renderer.lines == 0 then
             self:Hide()
+        else
+            arrange(saved.motion)
         end
     end)
     frame:Hide()
@@ -153,7 +182,7 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
         frame:Hide()
     end
 
-    local function showLine(self, pattern, value, critical)
+    local function showLine(self, pattern, value, critical, emphasis)
         local saved = BT.db.areas[area.key]
         if not saved.enabled then
             return true
@@ -169,7 +198,9 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
                 line.text:SetWordWrap(true)
             end
         end
-        line.critical = critical
+        line.emphasis = emphasis or 1
+        line.protected = secret(value)
+        line.height = nil
         style(line, saved, scale)
         -- Let the UI format protected amounts directly when the client allows it.
         if not pcall(line.text.SetFormattedText, line.text, pattern, value) then
@@ -181,16 +212,16 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
         line.lane = self.nextLane
         line.age = 0
         line.hold = critical and BT.db.holdCritical and CRITICAL_HOLD_SECONDS or 0
-        position(line, 0)
         line.text:SetAlpha(1)
-        line.text:Show()
         self.lines[#self.lines + 1] = line
+        arrange(saved.motion)
         frame:Show()
         return true
     end
 
     function renderer:ShowAmount(amount, critical)
-        if not secret(amount) then
+        local protected = secret(amount)
+        if not protected then
             if type(amount) ~= "number" or amount <= 0 then
                 return false
             end
@@ -199,7 +230,11 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
             end
         end
         local pattern = critical and (area.format .. " !") or area.format
-        return showLine(self, pattern, amount, critical)
+        local emphasis = critical and 1.28 or 1
+        if critical and area.circleSide then
+            emphasis = protected and 1.42 or 1.28 + math.min(amount / 500, 1) * 0.52
+        end
+        return showLine(self, pattern, amount, critical, emphasis)
     end
 
     function renderer:ShowOutcome(outcome, amount)
