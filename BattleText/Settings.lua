@@ -358,6 +358,7 @@ function BT.InitializeSettings()
     local motion = button(areasPage, "", 106, 181, -111, function()
         local saved = BT.db.areas[selectedArea.key]
         saved.motion = saved.motion == "arc" and selectedArea.circleSide and "circleDown" or nextMotion[saved.motion]
+        saved.beforeCircle = nil
         refreshArea()
     end)
     local swatch = button(areasPage, "Text color", 149, 181, -150)
@@ -376,6 +377,10 @@ function BT.InitializeSettings()
         useDefault:Enable()
     end, 181, 149)
     local defaultSize = label(areasPage, "", "GameFontHighlightSmall", 270, -238)
+    local circleToggle
+    local function circleEnabled()
+        return BT.db.areas.incoming.motion == "circleDown" or BT.db.areas.outgoing.motion == "circleDown"
+    end
     refreshArea = function()
         local saved = BT.db.areas[selectedArea.key]
         areaTitle:SetText(selectedArea.label)
@@ -385,6 +390,7 @@ function BT.InitializeSettings()
         useDefault:SetEnabled(saved.size ~= nil)
         defaultSize:SetFormattedText("Default: %g", BT.db.size)
         setAreaSize(saved.size or BT.db.size)
+        circleToggle:SetText(circleEnabled() and "Circle: On" or "Circle: Off")
         for key, control in pairs(areaButtons) do
             control:SetSelected(key == selectedArea.key)
         end
@@ -409,12 +415,22 @@ function BT.InitializeSettings()
         })
     end)
 
-    button(areasPage, "Apply Circle Layout", 103, 127, -274, function()
+    circleToggle = button(areasPage, "", 103, 127, -274, function()
+        local enable = not circleEnabled()
         for _, area in ipairs(BT.areas) do
             if area.circleSide then
                 local saved = BT.db.areas[area.key]
-                saved.motion = "circleDown"
-                saved.x, saved.y = BT.AreaStart(area, saved.motion)
+                if enable then
+                    saved.beforeCircle = { motion = saved.motion, x = saved.x, y = saved.y }
+                    saved.motion = "circleDown"
+                    saved.x, saved.y = BT.AreaStart(area, saved.motion)
+                elseif saved.motion == "circleDown" then
+                    local previous = saved.beforeCircle
+                    saved.motion = previous and previous.motion or "up"
+                    saved.x = previous and previous.x or area.x
+                    saved.y = previous and previous.y or area.y
+                    saved.beforeCircle = nil
+                end
                 place(area, handles[area.key], renderers[area.key])
                 BT.live[area.key]:Clear()
             end

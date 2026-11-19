@@ -71,6 +71,14 @@ function BT.NormalizeProfile(profile)
             and not (saved.motion == "circleDown" and area.circleSide) then
             saved.motion = defaultMotion
         end
+        local previous = saved.beforeCircle
+        if saved.motion == "circleDown" and type(previous) == "table"
+            and (previous.motion == "up" or previous.motion == "down" or previous.motion == "arc") then
+            previous.x = number(previous.x, area.x, -10000, 10000)
+            previous.y = number(previous.y, area.y, -10000, 10000)
+        else
+            saved.beforeCircle = nil
+        end
         db.areas[area.key] = saved
     end
     db.scrollDown = nil

@@ -8,6 +8,10 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.2
+
+- **Text Areas → Circle: On/Off** toggles the circle paths for both damage areas. Turning the layout off restores their previous motions and positions. A circle layout saved in an older version returns to the default upward paths if no previous layout was saved.
+
 ## 0.3.1
 
 - **NPC target damage** now works in and out of groups whenever its text area is enabled. The separate group switch has been removed. Target damage can include hits from pets and other players.
