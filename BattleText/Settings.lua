@@ -239,7 +239,11 @@ function BT.InitializeSettings()
         elapsed = 0
         sequence = sequence + 1
         local critical = sequence % 3 == 0
-        renderers.incoming:ShowAmount(critical and 486 or 162, critical)
+        if sequence % 4 == 0 then
+            renderers.incoming:ShowOutcome("Dodge")
+        else
+            renderers.incoming:ShowAmount(critical and 486 or 162, critical)
+        end
         renderers.outgoing:ShowAmount(critical and 912 or 304, critical)
         renderers.healing:ShowAmount(critical and 642 or 214, critical)
         if not BT.hasCombatText and not BT.hasUnitCombat then

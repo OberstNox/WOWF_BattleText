@@ -109,14 +109,10 @@ function BT.CreateRenderer(parent, area, scale)
         frame:Hide()
     end
 
-    function renderer:ShowAmount(amount, critical)
+    local function showLine(self, pattern, value, critical)
         local saved = BT.db.areas[area.key]
         if not saved.enabled then
             return true
-        end
-        local restricted = secret(amount)
-        if not restricted and (type(amount) ~= "number" or amount <= 0) then
-            return false
         end
         if #self.lines == MAX_LINES then
             recycle(self, 1)
@@ -127,9 +123,8 @@ function BT.CreateRenderer(parent, area, scale)
         end
         line.critical = critical
         style(line, saved, scale)
-        local pattern = critical and (area.format .. " !") or area.format
         -- Let the UI format protected amounts directly when the client allows it.
-        if not pcall(line.text.SetFormattedText, line.text, pattern, amount) then
+        if not pcall(line.text.SetFormattedText, line.text, pattern, value) then
             line.text:SetText("")
             self.pool[#self.pool + 1] = line
             return false
@@ -145,8 +140,37 @@ function BT.CreateRenderer(parent, area, scale)
         return true
     end
 
+    function renderer:ShowAmount(amount, critical)
+        if not secret(amount) and (type(amount) ~= "number" or amount <= 0) then
+            return false
+        end
+        local pattern = critical and (area.format .. " !") or area.format
+        return showLine(self, pattern, amount, critical)
+    end
+
+    function renderer:ShowOutcome(outcome, amount)
+        if secret(amount) or (type(amount) == "number" and amount > 0) then
+            if showLine(self, area.format .. " (" .. outcome .. ")", amount, false) then
+                return
+            end
+        end
+        showLine(self, "%s", outcome, false)
+    end
+
     return renderer
 end
+
+local outcomes = {
+    MISS = "Miss",
+    DODGE = "Dodge",
+    PARRY = "Parry",
+    BLOCK = "Block",
+    ABSORB = "Absorb",
+    RESIST = "Resist",
+    IMMUNE = "Immune",
+    DEFLECT = "Deflect",
+    REFLECT = "Reflect",
+}
 
 local eventTypes = {
     DAMAGE = { "incoming", 1 },
@@ -189,7 +213,23 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         SLASH_BATTLETEXT1 = "/battletext"
         SlashCmdList.BATTLETEXT = BT.ToggleSettings
     elseif event == "COMBAT_TEXT_UPDATE" then
-        local info = not secret(first) and eventTypes[first]
+        if secret(first) or type(first) ~= "string" then
+            return
+        end
+        local outcomeType = first:gsub("^SPELL_", "")
+        local outcome = outcomes[outcomeType]
+        if outcome then
+            local amountTaken
+            if outcomeType == "BLOCK" or outcomeType == "ABSORB" or outcomeType == "RESIST" then
+                local ok, damage, reduction = pcall(C_CombatText.GetCurrentEventInfo)
+                if ok and (secret(reduction) or reduction ~= nil) then
+                    amountTaken = damage
+                end
+            end
+            BT.live.incoming:ShowOutcome(outcome, amountTaken)
+            return
+        end
+        local info = eventTypes[first]
         if not info then
             return
         end
@@ -207,6 +247,8 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
             showLive("incoming", amount, critical)
         elseif action == "HEAL" then
             showLive("healing", amount, critical)
+        elseif outcomes[action] then
+            BT.live.incoming:ShowOutcome(outcomes[action])
         end
     end
 end)

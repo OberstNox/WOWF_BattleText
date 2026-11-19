@@ -8,6 +8,10 @@ Type `/battletext` in game. Change text size, scroll speed and the three area co
 
 Use the **Up**, **Down** or **Arc** button beside each area to cycle through its motion. **Arc** bends damage text outward and downward while received healing scrolls straight down. Use **Move text areas** to adjust where the text starts.
 
+## 0.1.1
+
+- Incoming combat text shows reported outcomes such as dodge, parry and absorb. Partial blocks, absorbs and resists include the damage taken when available.
+
 ## 0.1.0
 
 - Targets Forever 1.60.1, interface 16001.
