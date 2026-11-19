@@ -1,8 +1,8 @@
 local addonName, BT = ...
 
 BT.areas = {
-    { key = "incoming", label = "Incoming damage", x = -245, y = 45, rgb = { 1, 0.48, 0.45 }, format = "-%d" },
-    { key = "outgoing", label = "NPC target damage", x = 245, y = 45, rgb = { 1, 0.79, 0.43 }, format = "%d" },
+    { key = "incoming", label = "Incoming damage", x = -245, y = 45, rgb = { 1, 0.48, 0.45 }, format = "-%d", circleSide = -1 },
+    { key = "outgoing", label = "NPC target damage", x = 245, y = 45, rgb = { 1, 0.79, 0.43 }, format = "%d", circleSide = 1 },
     { key = "healing", label = "Healing received", x = 0, y = -165, rgb = { 0.38, 0.93, 0.72 }, format = "+%d" },
     { key = "experience", label = "XP gained", x = 0, y = 135, rgb = { 0.77, 0.62, 1 } },
     { key = "loot", label = "Loot received", x = 0, y = 225, rgb = { 1, 0.88, 0.56 } },
@@ -17,6 +17,19 @@ BT.combatMessages = {
 local MAX_LINES = 12
 local CRITICAL_HOLD_SECONDS = 0.6
 local FONT = STANDARD_TEXT_FONT
+local CIRCLE_RADIUS_X, CIRCLE_RADIUS_Y = 220, 122
+local CIRCLE_START = math.rad(35)
+local CIRCLE_SWEEP = math.pi - 2 * CIRCLE_START
+local CIRCLE_START_X = CIRCLE_RADIUS_X * math.sin(CIRCLE_START)
+local CIRCLE_START_Y = CIRCLE_RADIUS_Y * math.cos(CIRCLE_START)
+
+function BT.AreaStart(area, motion)
+    if motion == "circleDown" and area.circleSide then
+        return area.circleSide * CIRCLE_START_X, CIRCLE_START_Y
+    end
+    return area.x, area.y
+end
+
 local function secret(value)
     return issecretvalue and issecretvalue(value)
 end
@@ -52,7 +65,8 @@ function BT.NormalizeProfile(profile)
         saved.x = number(saved.x, area.x, -10000, 10000)
         saved.y = number(saved.y, area.y, -10000, 10000)
         saved.enabled = saved.enabled ~= false
-        if saved.motion ~= "up" and saved.motion ~= "down" and saved.motion ~= "arc" then
+        if saved.motion ~= "up" and saved.motion ~= "down" and saved.motion ~= "arc"
+            and not (saved.motion == "circleDown" and area.circleSide) then
             saved.motion = defaultMotion
         end
         db.areas[area.key] = saved
@@ -74,7 +88,7 @@ local function recycle(renderer, index)
     renderer.pool[#renderer.pool + 1] = line
 end
 
-function BT.CreateRenderer(parent, area, scale)
+function BT.CreateRenderer(parent, area, scale, circleScale)
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetSize(1, 1)
     local renderer = { frame = frame, lines = {}, pool = {}, area = area }
@@ -82,9 +96,17 @@ function BT.CreateRenderer(parent, area, scale)
         local x = (line.lane - 1) * 36
         local y = 66 * progress + line.lane * 20
         local motion = BT.db.areas[area.key].motion
+        if motion == "circleDown" and area.circleSide then
+            local angle = CIRCLE_START + CIRCLE_SWEEP * progress
+            local pathScale = circleScale or scale
+            x = area.circleSide * (CIRCLE_RADIUS_X * math.sin(angle) - CIRCLE_START_X) * pathScale
+                + (line.lane - 1) * 12 * scale
+            y = (CIRCLE_RADIUS_Y * math.cos(angle) - CIRCLE_START_Y) * pathScale
+            line.text:SetPoint("CENTER", frame, "CENTER", x, y)
+            return
+        end
         if motion == "arc" then
-            local side = area.key == "incoming" and -1 or (area.key == "outgoing" and 1 or 0)
-            x = x + side * 32 * math.sin(progress * math.pi)
+            x = x + (area.circleSide or 0) * 32 * math.sin(progress * math.pi)
         end
         if motion ~= "up" then
             y = -y

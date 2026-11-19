@@ -8,6 +8,11 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.2.3
+
+- **Text Areas → Apply Circle Layout** places incoming damage on the left and NPC target damage on the right. Both follow a downward curve around the center of the screen.
+- **Circle Down** can also be chosen individually for either damage area. **Move text areas** lets you adjust the starting points. **Reset positions** restores the starting points for the selected motions.
+
 ## 0.2.2
 
 - **NPC target damage** can display hits on your selected attackable NPC while playing solo. Forever reports damage taken by the NPC without identifying the attacker, so hits from pets or other players on the same target can appear. The display depends on which events and amounts the client provides.

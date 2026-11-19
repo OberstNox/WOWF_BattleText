@@ -1,7 +1,7 @@
 local _, BT = ...
 
-local motionLabels = { up = "Up", down = "Down", arc = "Arc" }
-local nextMotion = { up = "down", down = "arc", arc = "up" }
+local motionLabels = { up = "Up", down = "Down", arc = "Arc", circleDown = "Circle Down" }
+local nextMotion = { up = "down", down = "arc", arc = "up", circleDown = "up" }
 
 local previewAmounts = {
     incoming = { 162, 486 },
@@ -275,7 +275,7 @@ function BT.InitializeSettings()
             refreshArea()
             restartPreview()
         end)
-        local renderer = BT.CreateRenderer(preview, area, 0.72)
+        local renderer = BT.CreateRenderer(preview, area, 0.72, 0.42)
         renderers[area.key] = renderer
         local handle = makeHandle(area, renderer)
         handles[area.key] = handle
@@ -296,7 +296,7 @@ function BT.InitializeSettings()
     label(areasPage, "Movement", "GameFontHighlight", 181, -93)
     local motion = button(areasPage, "", 106, 181, -111, function()
         local saved = BT.db.areas[selectedArea.key]
-        saved.motion = nextMotion[saved.motion]
+        saved.motion = saved.motion == "arc" and selectedArea.circleSide and "circleDown" or nextMotion[saved.motion]
         refreshArea()
     end)
     local swatch = button(areasPage, "Text color", 106, 181, -150)
@@ -336,10 +336,23 @@ function BT.InitializeSettings()
         })
     end)
 
+    button(areasPage, "Apply Circle Layout", 156, 16, -231, function()
+        for _, area in ipairs(BT.areas) do
+            if area.circleSide then
+                local saved = BT.db.areas[area.key]
+                saved.motion = "circleDown"
+                saved.x, saved.y = BT.AreaStart(area, saved.motion)
+                place(area, handles[area.key], renderers[area.key])
+                BT.live[area.key]:Clear()
+            end
+        end
+        refreshArea()
+        restartPreview()
+    end)
     reset:SetScript("OnClick", function()
         for _, area in ipairs(BT.areas) do
             local saved = BT.db.areas[area.key]
-            saved.x, saved.y = area.x, area.y
+            saved.x, saved.y = BT.AreaStart(area, saved.motion)
             place(area, handles[area.key], renderers[area.key])
         end
     end)
