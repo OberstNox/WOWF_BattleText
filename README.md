@@ -4,9 +4,13 @@
 
 Copy the `BattleText` folder into `World of Warcraft/_forever_/Interface/AddOns/` so the game can find `AddOns/BattleText/BattleText.toc`. Restart the client if BattleText is missing from the AddOns list.
 
-Type `/battletext` in game. Change text size, scroll speed and the three area colors while the preview plays. Select **Move text areas**, drag the handles in the game world, then choose **Done moving**. **Reset positions** restores the default locations. Settings are shared across characters.
+Type `/battletext` in game. Change text size, scroll speed and area colors while the preview plays. Select **Move text areas**, drag the handles in the game world, then choose **Done moving**. **Reset positions** restores the default locations. Settings are shared across characters.
 
-Use the **Up**, **Down** or **Arc** button beside each area to cycle through its motion. **Arc** bends damage text outward and downward while received healing scrolls straight down. Use **Move text areas** to adjust where the text starts.
+Use the **Up**, **Down** or **Arc** button beside each area to cycle through its motion. **Arc** bends damage text outward and downward while healing and XP scroll straight down. Use **Move text areas** to adjust where the text starts.
+
+## 0.1.3
+
+- **XP gained** displays the client's XP gain messages in a dedicated area above the character by default. It has its own visibility, color, movement and position settings. The preview includes a sample XP message, and the damage and healing minimum does not apply to XP.
 
 ## 0.1.2
 

@@ -116,7 +116,7 @@ end
 
 function BT.InitializeSettings()
     local panel = CreateFrame("Frame", "BattleTextSettings", UIParent)
-    panel:SetSize(650, 426)
+    panel:SetSize(650, 457)
     panel:SetPoint("CENTER")
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
@@ -139,7 +139,7 @@ function BT.InitializeSettings()
 
     slider(panel, "Text size", -67, 16, 40, 1, BT.db.size, function(value) BT.db.size = value end)
     slider(panel, "Scroll speed", -117, 0.5, 2, 0.1, BT.db.speed, function(value) BT.db.speed = value end)
-    slider(panel, "Minimum amount", -318, 0, 1000, 10, BT.db.minimumAmount,
+    slider(panel, "Minimum amount", -349, 0, 1000, 10, BT.db.minimumAmount,
         function(value) BT.db.minimumAmount = value end)
 
     local handles, renderers = {}, {}
@@ -158,8 +158,8 @@ function BT.InitializeSettings()
         end
     end)
 
-    local reset = button(panel, "Reset positions", 119, 160, -271)
-    button(panel, "Move text areas", 128, 24, -271, function()
+    local reset = button(panel, "Reset positions", 119, 160, -302)
+    button(panel, "Move text areas", 128, 24, -302, function()
         panel:Hide()
         moving:Show()
         for _, handle in pairs(handles) do
@@ -228,8 +228,8 @@ function BT.InitializeSettings()
         end
     end)
 
-    label(panel, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 282, -346)
-    local status = label(panel, "", "GameFontHighlightSmall", 24, -385)
+    label(panel, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 282, -377)
+    local status = label(panel, "", "GameFontHighlightSmall", 24, -416)
     status:SetWidth(602)
     status:SetJustifyH("LEFT")
     status:SetTextColor(0.73, 0.80, 0.84)
@@ -249,12 +249,15 @@ function BT.InitializeSettings()
         end
         renderers.outgoing:ShowAmount(critical and 912 or 304, critical)
         renderers.healing:ShowAmount(critical and 642 or 214, critical)
+        if sequence % 3 == 1 then
+            renderers.experience:ShowMessage("+135 XP")
+        end
         if not BT.hasCombatText and not BT.hasUnitCombat then
-            status:SetText("Live combat text is unavailable on this client. Preview uses sample values.")
+            status:SetText("Live damage and healing are unavailable on this client.")
         elseif BT.restricted.incoming or BT.restricted.healing then
             status:SetText("Forever withheld some live amounts. Outgoing damage is preview-only.")
         else
-            status:SetText("Live text uses damage and healing received. Outgoing damage is preview-only.")
+            status:SetText("Outgoing damage is preview-only.")
         end
     end)
     panel:SetScript("OnShow", function() elapsed = 1 end)

@@ -4,6 +4,7 @@ BT.areas = {
     { key = "incoming", label = "Incoming damage", x = -245, y = 45, rgb = { 1, 0.48, 0.45 }, format = "-%d" },
     { key = "outgoing", label = "Outgoing damage", x = 245, y = 45, rgb = { 1, 0.79, 0.43 }, format = "%d" },
     { key = "healing", label = "Healing received", x = 0, y = -165, rgb = { 0.38, 0.93, 0.72 }, format = "+%d" },
+    { key = "experience", label = "XP gained", x = 0, y = 135, rgb = { 0.77, 0.62, 1 } },
 }
 
 local MAX_LINES = 12
@@ -121,6 +122,10 @@ function BT.CreateRenderer(parent, area, scale)
         local line = table.remove(self.pool)
         if not line then
             line = { text = frame:CreateFontString(nil, "OVERLAY") }
+            if area.key == "experience" then
+                line.text:SetWidth(300 * scale)
+                line.text:SetWordWrap(true)
+            end
         end
         line.critical = critical
         style(line, saved, scale)
@@ -161,6 +166,12 @@ function BT.CreateRenderer(parent, area, scale)
             end
         end
         showLine(self, "%s", outcome, false)
+    end
+
+    function renderer:ShowMessage(message)
+        if secret(message) or (type(message) == "string" and message ~= "") then
+            showLine(self, "%s", message, false)
+        end
     end
 
     return renderer
@@ -211,6 +222,7 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
             BT.live[area.key] = BT.CreateRenderer(UIParent, area, 1)
         end
         BT.InitializeSettings()
+        self:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN")
         BT.hasCombatText = C_CombatText and C_CombatText.GetCurrentEventInfo
             and pcall(self.RegisterEvent, self, "COMBAT_TEXT_UPDATE")
         if not BT.hasCombatText then
@@ -218,6 +230,8 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         end
         SLASH_BATTLETEXT1 = "/battletext"
         SlashCmdList.BATTLETEXT = BT.ToggleSettings
+    elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
+        BT.live.experience:ShowMessage(first)
     elseif event == "COMBAT_TEXT_UPDATE" then
         if secret(first) or type(first) ~= "string" then
             return
