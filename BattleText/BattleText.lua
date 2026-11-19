@@ -15,6 +15,7 @@ BT.combatMessages = {
 }
 
 local MAX_LINES = 12
+local CRITICAL_HOLD_SECONDS = 0.6
 local FONT = STANDARD_TEXT_FONT
 local function secret(value)
     return issecretvalue and issecretvalue(value)
@@ -38,6 +39,7 @@ local function loadSettings()
     db.size = number(db.size, 26, 16, 40)
     db.speed = number(db.speed, 1, 0.5, 2)
     db.minimumAmount = number(db.minimumAmount, 0, 0, 1000)
+    db.holdCritical = db.holdCritical == true
     local defaultMotion = db.scrollDown == true and "arc" or "up"
     db.areas = tableOrEmpty(db.areas)
     for _, area in ipairs(BT.areas) do
@@ -95,7 +97,9 @@ function BT.CreateRenderer(parent, area, scale)
         local saved = BT.db.areas[area.key]
         for i = #renderer.lines, 1, -1 do
             local line = renderer.lines[i]
-            line.age = line.age + elapsed * BT.db.speed
+            local held = math.min(line.hold, elapsed)
+            line.hold = line.hold - held
+            line.age = line.age + (elapsed - held) * BT.db.speed
             if line.age >= 1.65 or not saved.enabled then
                 recycle(renderer, i)
             else
@@ -145,6 +149,7 @@ function BT.CreateRenderer(parent, area, scale)
         self.nextLane = ((self.nextLane or -1) + 1) % 3
         line.lane = self.nextLane
         line.age = 0
+        line.hold = critical and BT.db.holdCritical and CRITICAL_HOLD_SECONDS or 0
         position(line, 0)
         line.text:SetAlpha(1)
         line.text:Show()

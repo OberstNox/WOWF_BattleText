@@ -8,6 +8,10 @@ Type `/battletext` in game. Change text size, scroll speed and area colors while
 
 Use the **Up**, **Down** or **Arc** button beside each area to cycle through its motion. **Arc** bends damage text outward and downward while healing and XP scroll straight down. Use **Move text areas** to adjust where the text starts.
 
+## 0.1.6
+
+- Enable **Hold critical hits and heals** to pause crits for 0.6 seconds before they scroll. The option applies to live text and the preview and starts off by default.
+
 ## 0.1.5
 
 - **Combat status** displays **Combat started** and **Combat ended** as the player enters and leaves combat. The area can be moved, recolored and turned off, and both messages are shown in the preview.

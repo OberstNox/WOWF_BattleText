@@ -167,6 +167,14 @@ function BT.InitializeSettings()
             handle:Show()
         end
     end)
+    local holdCritical = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+    holdCritical:SetSize(24, 24)
+    holdCritical:SetPoint("TOPLEFT", 22, -404)
+    holdCritical:SetChecked(BT.db.holdCritical)
+    label(holdCritical, "Hold critical hits and heals", "GameFontHighlight", 27, -6)
+    holdCritical:SetScript("OnClick", function(self)
+        BT.db.holdCritical = self:GetChecked()
+    end)
 
     for index, area in ipairs(BT.areas) do
         local saved = BT.db.areas[area.key]
