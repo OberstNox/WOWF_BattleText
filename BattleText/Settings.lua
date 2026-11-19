@@ -116,7 +116,7 @@ end
 
 function BT.InitializeSettings()
     local panel = CreateFrame("Frame", "BattleTextSettings", UIParent)
-    panel:SetSize(650, 390)
+    panel:SetSize(650, 426)
     panel:SetPoint("CENTER")
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
@@ -139,6 +139,8 @@ function BT.InitializeSettings()
 
     slider(panel, "Text size", -67, 16, 40, 1, BT.db.size, function(value) BT.db.size = value end)
     slider(panel, "Scroll speed", -117, 0.5, 2, 0.1, BT.db.speed, function(value) BT.db.speed = value end)
+    slider(panel, "Minimum amount", -318, 0, 1000, 10, BT.db.minimumAmount,
+        function(value) BT.db.minimumAmount = value end)
 
     local handles, renderers = {}, {}
     local moving = CreateFrame("Frame", nil, UIParent)
@@ -226,7 +228,8 @@ function BT.InitializeSettings()
         end
     end)
 
-    local status = label(panel, "", "GameFontHighlightSmall", 24, -337)
+    label(panel, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 282, -346)
+    local status = label(panel, "", "GameFontHighlightSmall", 24, -385)
     status:SetWidth(602)
     status:SetJustifyH("LEFT")
     status:SetTextColor(0.73, 0.80, 0.84)

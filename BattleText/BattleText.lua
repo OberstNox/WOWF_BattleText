@@ -29,6 +29,7 @@ local function loadSettings()
     local db = tableOrEmpty(BattleTextDB)
     db.size = number(db.size, 26, 16, 40)
     db.speed = number(db.speed, 1, 0.5, 2)
+    db.minimumAmount = number(db.minimumAmount, 0, 0, 1000)
     local defaultMotion = db.scrollDown == true and "arc" or "up"
     db.areas = tableOrEmpty(db.areas)
     for _, area in ipairs(BT.areas) do
@@ -141,15 +142,20 @@ function BT.CreateRenderer(parent, area, scale)
     end
 
     function renderer:ShowAmount(amount, critical)
-        if not secret(amount) and (type(amount) ~= "number" or amount <= 0) then
-            return false
+        if not secret(amount) then
+            if type(amount) ~= "number" or amount <= 0 then
+                return false
+            end
+            if amount < BT.db.minimumAmount then
+                return true
+            end
         end
         local pattern = critical and (area.format .. " !") or area.format
         return showLine(self, pattern, amount, critical)
     end
 
     function renderer:ShowOutcome(outcome, amount)
-        if secret(amount) or (type(amount) == "number" and amount > 0) then
+        if secret(amount) or (type(amount) == "number" and amount > 0 and amount >= BT.db.minimumAmount) then
             if showLine(self, area.format .. " (" .. outcome .. ")", amount, false) then
                 return
             end
