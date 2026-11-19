@@ -285,18 +285,48 @@ local function showLive(key, amount, critical)
     end
 end
 
+local targetDamage = { events = 0, wounds = 0, accepted = 0 }
+
 local function registerTargetDamage()
     local targetEvents = CreateFrame("Frame")
     BT.hasTargetDamage = pcall(targetEvents.RegisterUnitEvent, targetEvents, "UNIT_COMBAT", "target")
-    targetEvents:SetScript("OnEvent", function(_, _, unit, action, flag, amount)
-        if secret(unit) or unit ~= "target" or secret(action) or action ~= "WOUND" or IsInGroup() then
-            return
-        end
+    if not BT.hasTargetDamage then
+        BT.hasTargetDamage = pcall(targetEvents.RegisterEvent, targetEvents, "UNIT_COMBAT")
+    end
+    targetEvents:RegisterEvent("PLAYER_TARGET_CHANGED")
+    local knownNPC
+    local function checkTarget()
         local attackable = UnitCanAttack("player", "target")
         local playerControlled = UnitPlayerControlled("target")
-        if secret(attackable) or not attackable or secret(playerControlled) or playerControlled then
+        if (not secret(attackable) and not attackable) or (not secret(playerControlled) and playerControlled) then
+            knownNPC = false
+        elseif not secret(attackable) and not secret(playerControlled) then
+            knownNPC = true
+        end
+    end
+    checkTarget()
+    targetEvents:SetScript("OnEvent", function(_, event, unit, action, flag, amount)
+        if event == "PLAYER_TARGET_CHANGED" then
+            knownNPC = nil
+            checkTarget()
             return
         end
+        if secret(unit) or unit ~= "target" then
+            return
+        end
+        targetDamage.events = targetDamage.events + 1
+        if secret(action) or action ~= "WOUND" then
+            return
+        end
+        targetDamage.wounds = targetDamage.wounds + 1
+        if IsInGroup() then
+            return
+        end
+        checkTarget()
+        if not knownNPC then
+            return
+        end
+        targetDamage.accepted = targetDamage.accepted + 1
         showLive("outgoing", amount, not secret(flag) and flag == "CRITICAL")
     end)
 end
@@ -336,7 +366,17 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         end
         SLASH_BATTLETEXT1 = "/battletext"
         SlashCmdList.BATTLETEXT = function(input)
-            if (input or ""):match("^%s*test%s*$") then
+            local command = (input or ""):match("^%s*(.-)%s*$")
+            if command == "status" then
+                local area = BT.db.areas.outgoing
+                print(("BattleText NPC target: %s; area %s; group %s; minimum %g. Events %d, wounds %d, accepted %d. Protected amount rejected: %s."):format(
+                    BT.hasTargetDamage and "registered" or "unavailable", area.enabled and "on" or "off",
+                    IsInGroup() and "yes" or "no", BT.db.minimumAmount,
+                    targetDamage.events, targetDamage.wounds, targetDamage.accepted,
+                    BT.restricted.outgoing and "yes" or "no"))
+                return
+            end
+            if command == "test" then
                 local count = 0
                 for _, area in ipairs(BT.areas) do
                     if BT.db.areas[area.key].enabled then

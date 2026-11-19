@@ -8,6 +8,11 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.2.9
+
+- Solo target damage retains confirmed NPC target eligibility if the client restricts target checks during the fight. Changing targets clears that eligibility.
+- Use `/battletext status` after a fight to see target event counts, enabled state, group state and protected-amount failures.
+
 ## 0.2.8
 
 - Live text anchors directly to the game screen when profiles change. Use `/battletext test` to show labeled samples in the active profile's enabled areas and check the in-game display independently of combat events.
