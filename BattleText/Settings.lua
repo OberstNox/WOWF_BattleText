@@ -603,12 +603,38 @@ function BT.InitializeSettings()
     end
     BT.RefreshProfile()
 
-    function BT.ToggleSettings()
+    function BT.ToggleSettings(forceOpen)
         if moving:IsShown() then
             moving:Hide()
             panel:Show()
         else
-            panel:SetShown(not panel:IsShown())
+            panel:SetShown(forceOpen == true or not panel:IsShown())
         end
+    end
+
+    if Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory then
+        local page = CreateFrame("Frame", nil, UIParent)
+        page:Hide()
+        local logo = page:CreateTexture(nil, "ARTWORK")
+        logo:SetSize(44, 44)
+        logo:SetPoint("TOPLEFT", 20, -18)
+        logo:SetTexture(ICON)
+        label(page, "BattleText", "GameFontNormalLarge", 76, -25)
+        label(page, "Customize combat text, screen layout and profiles.", "GameFontHighlightSmall", 76, -47)
+        local notice = label(page, "", "GameFontHighlightSmall", 20, -110)
+        button(page, "Open BattleText", 148, 20, -76, function()
+            if SettingsPanel and SettingsPanel:IsShown() and SettingsPanel.Close then
+                if SettingsPanel:HasUnappliedSettings() then
+                    notice:SetText("Apply your pending WoW settings first.")
+                    return
+                end
+                SettingsPanel:Close(true)
+            end
+            notice:SetText("")
+            BT.ToggleSettings(true)
+        end)
+        page:SetScript("OnShow", function() notice:SetText("") end)
+        local category = Settings.RegisterCanvasLayoutCategory(page, "BattleText")
+        Settings.RegisterAddOnCategory(category)
     end
 end
