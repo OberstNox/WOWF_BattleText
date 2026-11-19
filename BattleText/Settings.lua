@@ -3,6 +3,26 @@ local _, BT = ...
 local motionLabels = { up = "Up", down = "Down", arc = "Arc" }
 local nextMotion = { up = "down", down = "arc", arc = "up" }
 
+local function showSamples(renderers, sequence)
+    local critical = sequence % 3 == 0
+    if sequence % 4 == 0 then
+        renderers.incoming:ShowOutcome("Dodge")
+    else
+        renderers.incoming:ShowAmount(critical and 486 or 162, critical)
+    end
+    renderers.outgoing:ShowAmount(critical and 912 or 304, critical)
+    renderers.healing:ShowAmount(critical and 642 or 214, critical)
+    if sequence % 4 == 1 then
+        renderers.experience:ShowMessage("+135 XP")
+    elseif sequence % 4 == 3 then
+        renderers.loot:ShowMessage("Linen Cloth x2")
+    elseif sequence % 8 == 2 then
+        renderers.combat:ShowMessage(BT.combatMessages.PLAYER_REGEN_DISABLED)
+    elseif sequence % 8 == 6 then
+        renderers.combat:ShowMessage(BT.combatMessages.PLAYER_REGEN_ENABLED)
+    end
+end
+
 local function fill(frame, r, g, b, a)
     local texture = frame:CreateTexture(nil, "BACKGROUND")
     texture:SetAllPoints()
@@ -143,18 +163,33 @@ function BT.InitializeSettings()
     slider(panel, "Minimum amount", -348, 0, 1000, 10, BT.db.minimumAmount,
         function(value) BT.db.minimumAmount = value end, 282)
 
-    local handles, renderers = {}, {}
+    local handles, renderers, worldPreview = {}, {}, {}
     local moving = CreateFrame("Frame", nil, UIParent)
-    moving:SetSize(134, 29)
+    moving:SetSize(280, 62)
     moving:SetPoint("TOP", 0, -78)
     moving:SetFrameStrata("FULLSCREEN_DIALOG")
     moving:Hide()
-    button(moving, "Done moving", 134, 0, 0, function()
+    fill(moving, 0.045, 0.07, 0.09, 0.98)
+    label(moving, "Layout preview  |  Drag text areas", "GameFontHighlight", 12, -9)
+    button(moving, "Done moving", 134, 73, -29, function()
         moving:Hide()
         panel:Show()
     end)
+    local moveElapsed, moveSequence
+    moving:SetScript("OnShow", function()
+        moveElapsed, moveSequence = 1.25, 0
+    end)
+    moving:SetScript("OnUpdate", function(_, delta)
+        moveElapsed = moveElapsed + delta
+        if moveElapsed >= 1.25 then
+            moveElapsed = 0
+            moveSequence = moveSequence + 1
+            showSamples(worldPreview, moveSequence)
+        end
+    end)
     moving:SetScript("OnHide", function()
-        for _, handle in pairs(handles) do
+        for key, handle in pairs(handles) do
+            worldPreview[key]:Clear()
             handle:Hide()
         end
     end)
@@ -215,7 +250,11 @@ function BT.InitializeSettings()
         end)
         local renderer = BT.CreateRenderer(preview, area, 0.72)
         renderers[area.key] = renderer
-        handles[area.key] = makeHandle(area, renderer)
+        local handle = makeHandle(area, renderer)
+        handles[area.key] = handle
+        local sample = BT.CreateRenderer(handle, area, 1)
+        sample.frame:SetPoint("CENTER", handle, "CENTER")
+        worldPreview[area.key] = sample
     end
 
     reset:SetScript("OnClick", function()
@@ -250,23 +289,7 @@ function BT.InitializeSettings()
         end
         elapsed = 0
         sequence = sequence + 1
-        local critical = sequence % 3 == 0
-        if sequence % 4 == 0 then
-            renderers.incoming:ShowOutcome("Dodge")
-        else
-            renderers.incoming:ShowAmount(critical and 486 or 162, critical)
-        end
-        renderers.outgoing:ShowAmount(critical and 912 or 304, critical)
-        renderers.healing:ShowAmount(critical and 642 or 214, critical)
-        if sequence % 4 == 1 then
-            renderers.experience:ShowMessage("+135 XP")
-        elseif sequence % 4 == 3 then
-            renderers.loot:ShowMessage("Linen Cloth x2")
-        elseif sequence % 8 == 2 then
-            renderers.combat:ShowMessage(BT.combatMessages.PLAYER_REGEN_DISABLED)
-        elseif sequence % 8 == 6 then
-            renderers.combat:ShowMessage(BT.combatMessages.PLAYER_REGEN_ENABLED)
-        end
+        showSamples(renderers, sequence)
         if not BT.hasCombatText and not BT.hasUnitCombat then
             status:SetText("Live damage and healing are unavailable on this client.")
         elseif BT.restricted.incoming or BT.restricted.healing then
