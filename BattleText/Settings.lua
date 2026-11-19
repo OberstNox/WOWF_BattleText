@@ -101,12 +101,12 @@ local function button(parent, name, width, x, y, onClick)
     return control
 end
 
-local function slider(parent, name, y, minimum, maximum, step, change)
-    local x = 16
+local function slider(parent, name, y, minimum, maximum, step, change, x, width)
+    x = x or 16
     local caption = label(parent, name, "GameFontHighlight", x, y)
     local control = CreateFrame("Slider", nil, parent, "BackdropTemplate")
     control:SetOrientation("HORIZONTAL")
-    control:SetSize(233, 18)
+    control:SetSize(width or 233, 18)
     control:SetPoint("TOPLEFT", x, y - 22)
     local track = control:CreateTexture(nil, "BACKGROUND")
     track:SetPoint("LEFT", 4, 0)
@@ -132,12 +132,13 @@ local function slider(parent, name, y, minimum, maximum, step, change)
         caption:SetFormattedText("%s   |cff8ce0d7%g|r", name, current)
     end
     control:SetScript("OnValueChanged", update)
-    return function(value)
+    local function setValue(value)
         refreshing = true
         control:SetValue(value)
         update(control, value)
         refreshing = false
     end
+    return setValue, control, caption
 end
 
 local function checkbox(parent, text, x, y, change)
@@ -359,12 +360,23 @@ function BT.InitializeSettings()
     color:SetPoint("RIGHT", swatch, "RIGHT", -8, 0)
     color:SetDrawLayer("OVERLAY")
     local profileRevision = 0
+    local customSize = checkbox(areasPage, "Custom text size", 178, -183, function(checked)
+        BT.db.areas[selectedArea.key].size = checked and BT.db.size or nil
+        refreshArea()
+    end)
+    local setAreaSize, areaSizeSlider, areaSizeCaption = slider(areasPage, "Text size", -221, 16, 64, 1,
+        function(value) BT.db.areas[selectedArea.key].size = value end, 181, 149)
     refreshArea = function()
         local saved = BT.db.areas[selectedArea.key]
         areaTitle:SetText(selectedArea.label)
         visible:SetChecked(saved.enabled)
         motion:SetText(motionLabels[saved.motion])
         color:SetColorTexture(unpack(saved.rgb))
+        local hasCustomSize = saved.size ~= nil
+        customSize:SetChecked(hasCustomSize)
+        areaSizeSlider:SetShown(hasCustomSize)
+        areaSizeCaption:SetShown(hasCustomSize)
+        setAreaSize(saved.size or BT.db.size)
         for key, control in pairs(areaButtons) do
             control:SetSelected(key == selectedArea.key)
         end

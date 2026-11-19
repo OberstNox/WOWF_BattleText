@@ -65,6 +65,7 @@ function BT.NormalizeProfile(profile)
         saved.x = number(saved.x, area.x, -10000, 10000)
         saved.y = number(saved.y, area.y, -10000, 10000)
         saved.enabled = saved.enabled ~= false
+        saved.size = number(saved.size, nil, 16, 64)
         if saved.motion ~= "up" and saved.motion ~= "down" and saved.motion ~= "arc"
             and not (saved.motion == "circleDown" and area.circleSide) then
             saved.motion = defaultMotion
@@ -76,7 +77,7 @@ function BT.NormalizeProfile(profile)
 end
 
 local function style(line, saved, scale)
-    local size = BT.db.size * scale * (line.critical and 1.28 or 1)
+    local size = (saved.size or BT.db.size) * scale * (line.critical and 1.28 or 1)
     line.text:SetFont(FONT, math.floor(size + 0.5), "OUTLINE")
     line.text:SetTextColor(unpack(saved.rgb))
 end
