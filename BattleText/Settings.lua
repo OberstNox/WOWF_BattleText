@@ -3,6 +3,26 @@ local _, BT = ...
 local motionLabels = { up = "Up", down = "Down", arc = "Arc" }
 local nextMotion = { up = "down", down = "arc", arc = "up" }
 
+local previewAmounts = {
+    incoming = { 162, 486 },
+    outgoing = { 304, 912 },
+    healing = { 214, 642 },
+}
+
+local function showAreaSample(renderer, area, critical)
+    local amounts = previewAmounts[area.key]
+    if amounts then
+        renderer:ShowAmount(amounts[critical and 2 or 1], critical)
+    elseif area.key == "experience" then
+        renderer:ShowMessage("+135 XP")
+    elseif area.key == "loot" then
+        renderer:ShowMessage("Linen Cloth x2")
+    else
+        renderer:ShowMessage(critical and BT.combatMessages.PLAYER_REGEN_ENABLED
+            or BT.combatMessages.PLAYER_REGEN_DISABLED)
+    end
+end
+
 local function showSamples(renderers, sequence)
     local critical = sequence % 3 == 0
     if sequence % 4 == 0 then
@@ -108,8 +128,10 @@ local function place(area, handle, preview)
     if preview then
         local frame = preview.frame
         frame:ClearAllPoints()
+        local previewX = math.max(-95, math.min(95, x / 2.6))
+        local previewY = math.max(-58, math.min(58, y / 3.6))
         frame:SetPoint("CENTER", frame:GetParent(), "CENTER",
-            x / math.max(1, UIParent:GetWidth()) * 250, y / math.max(1, UIParent:GetHeight()) * 160 - 18)
+            previewX, previewY - 22)
     end
 end
 
@@ -170,12 +192,15 @@ function BT.InitializeSettings()
     preview:SetSize(334, 310)
     fill(preview, 0.075, 0.11, 0.14)
     label(preview, "Live preview", "GameFontHighlight", 15, -14)
+    local previewCaption = label(preview, "", "GameFontHighlightSmall", 15, -37)
     local reticle = preview:CreateTexture(nil, "ARTWORK")
     reticle:SetSize(7, 7)
     reticle:SetPoint("CENTER", 0, -7)
     reticle:SetColorTexture(0.33, 0.51, 0.57)
 
     local pages, tabs = {}, {}
+    local activePage = 1
+    local restartPreview
     for index, title in ipairs({ "General", "Text Areas", "Profiles" }) do
         local page = CreateFrame("Frame", nil, panel)
         page:SetSize(350, 310)
@@ -183,10 +208,12 @@ function BT.InitializeSettings()
         fill(page, 0.075, 0.11, 0.14)
         pages[index] = page
         tabs[index] = button(panel, title, 104, 24 + (index - 1) * 111, -77, function()
+            activePage = index
             for i, section in ipairs(pages) do
                 section:SetShown(section == page)
                 tabs[i]:SetEnabled(section ~= page)
             end
+            restartPreview()
         end)
         page:SetShown(index == 1)
     end
@@ -246,6 +273,7 @@ function BT.InitializeSettings()
         areaButtons[area.key] = button(areasPage, area.label, 146, 16, -18 - (index - 1) * 36, function()
             selectedArea = area
             refreshArea()
+            restartPreview()
         end)
         local renderer = BT.CreateRenderer(preview, area, 0.72)
         renderers[area.key] = renderer
@@ -262,8 +290,8 @@ function BT.InitializeSettings()
         BT.db.areas[key].enabled = checked
         if not checked then
             BT.live[key]:Clear()
-            renderers[key]:Clear()
         end
+        restartPreview()
     end)
     label(areasPage, "Movement", "GameFontHighlight", 181, -93)
     local motion = button(areasPage, "", 106, 181, -111, function()
@@ -335,14 +363,37 @@ function BT.InitializeSettings()
     status:SetJustifyH("LEFT")
     status:SetTextColor(0.73, 0.80, 0.84)
     local elapsed, sequence = 0, 0
+    local previewRenderer
+    restartPreview = function()
+        if previewRenderer then
+            previewRenderer:Clear()
+            previewRenderer = nil
+        end
+        elapsed, sequence = 1, 0
+    end
     panel:SetScript("OnUpdate", function(_, delta)
+        if previewRenderer and #previewRenderer.lines > 0 then
+            return
+        end
         elapsed = elapsed + delta
-        if elapsed < 0.76 then
+        if elapsed < 0.22 then
             return
         end
         elapsed = 0
         sequence = sequence + 1
-        showSamples(renderers, sequence)
+        local area = activePage == 2 and selectedArea or BT.areas[(sequence - 1) % #BT.areas + 1]
+        local critical = activePage == 2 and sequence % 2 == 0
+            or activePage ~= 2 and math.floor((sequence - 1) / #BT.areas) % 2 == 1
+        local caption = area.label
+        local amounts = previewAmounts[area.key]
+        if not BT.db.areas[area.key].enabled then
+            caption = caption .. " (hidden)"
+        elseif amounts and amounts[critical and 2 or 1] < BT.db.minimumAmount then
+            caption = caption .. " (below minimum)"
+        end
+        previewCaption:SetText(caption)
+        previewRenderer = renderers[area.key]
+        showAreaSample(previewRenderer, area, critical)
         if not BT.hasCombatText and not BT.hasUnitCombat then
             status:SetText("Live damage and healing are unavailable on this client.")
         elseif BT.restricted.incoming or BT.restricted.healing then
@@ -351,7 +402,7 @@ function BT.InitializeSettings()
             status:SetText("Outgoing damage is preview-only.")
         end
     end)
-    panel:SetScript("OnShow", function() elapsed = 1 end)
+    panel:SetScript("OnShow", restartPreview)
     panel:SetScript("OnHide", function()
         for _, renderer in pairs(renderers) do
             renderer:Clear()
@@ -374,7 +425,7 @@ function BT.InitializeSettings()
             worldPreview[key]:Clear()
             BT.live[key]:Clear()
         end
-        elapsed, sequence = 1, 0
+        restartPreview()
     end
     BT.RefreshProfile()
 

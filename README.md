@@ -8,6 +8,10 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.2.1
+
+- The dashboard preview shows one area at a time so samples stay readable. On **Text Areas**, it previews the selected area immediately. **Move text areas** still previews the full layout in the game world.
+
 ## 0.2.0
 
 - **Profiles** lets you select a profile, start with defaults, copy the active profile, rename it or delete it. Each character remembers its selection. Characters sharing a profile also share edits to that profile.
