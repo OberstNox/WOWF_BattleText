@@ -282,6 +282,22 @@ function BT.InitializeSettings()
     panel:SetClampedToScreen(true)
     panel:EnableMouse(true)
     fill(panel, 0.048, 0.064, 0.091, 0.98)
+    local border = CreateFrame("Frame", nil, panel)
+    border:SetAllPoints(panel)
+    border:SetFrameLevel(panel:GetFrameLevel() + 5)
+    for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
+        local edge = border:CreateTexture(nil, "OVERLAY")
+        if side == "TOP" or side == "BOTTOM" then
+            edge:SetPoint(side .. "LEFT", border)
+            edge:SetPoint(side .. "RIGHT", border)
+            edge:SetHeight(2)
+        else
+            edge:SetPoint("TOP" .. side, border)
+            edge:SetPoint("BOTTOM" .. side, border)
+            edge:SetWidth(2)
+        end
+        edge:SetColorTexture(0.24, 0.43, 0.45)
+    end
     local header = CreateFrame("Frame", nil, panel)
     header:SetSize(858, 54)
     header:SetPoint("TOPLEFT")
