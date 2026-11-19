@@ -287,8 +287,6 @@ function BT.InitializeSettings()
     local setMinimum = slider(general, "Minimum damage and healing", -210, 0, 1000, 10,
         function(value) BT.db.minimumAmount = value end)
     label(general, "0 shows all damage and healing amounts.", "GameFontHighlightSmall", 16, -255)
-    local groupTargetDamage = checkbox(general, "Show NPC target damage in groups", 14, -274, 221,
-        function(checked) BT.db.groupTargetDamage = checked end)
 
     local handles, renderers, worldPreview = {}, {}, {}
     local moving = CreateFrame("Frame", nil, UIParent)
@@ -486,8 +484,6 @@ function BT.InitializeSettings()
             status:SetText("Live damage and healing received are unavailable on this client.")
         elseif not BT.hasTargetDamage then
             status:SetText("NPC target damage is unavailable on this client.")
-        elseif IsInGroup() and not BT.db.groupTargetDamage then
-            status:SetText("NPC target damage is paused while you are in a group.")
         elseif BT.restricted.incoming or BT.restricted.healing or BT.restricted.outgoing then
             status:SetText("Forever withheld some live amounts. NPC target text may include hits by others.")
         else
@@ -508,7 +504,6 @@ function BT.InitializeSettings()
         setSpeed(BT.db.speed)
         setMinimum(BT.db.minimumAmount)
         holdCritical:SetChecked(BT.db.holdCritical)
-        groupTargetDamage:SetChecked(BT.db.groupTargetDamage)
         active:SetText("Active profile   " .. BT.activeProfile)
         refreshArea()
         refreshProfiles()
