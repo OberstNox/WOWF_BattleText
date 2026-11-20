@@ -200,6 +200,69 @@ local function button(parent, name, width, x, y, onClick, font)
     return control
 end
 
+local function createWelcomeDialog(panel, version)
+    local overlay = CreateFrame("Frame", "BattleTextWelcome", panel)
+    overlay:SetAllPoints(panel)
+    overlay:SetFrameLevel(panel:GetFrameLevel() + 15)
+    overlay:EnableMouse(true)
+    overlay:EnableMouseWheel(true)
+    fill(overlay, 0, 0, 0, 0.72)
+    overlay:Hide()
+
+    local dialog = CreateFrame("Frame", nil, overlay)
+    dialog:SetSize(650, 336)
+    dialog:SetPoint("CENTER")
+    fill(dialog, 0.26, 0.26, 0.26)
+    local body = CreateFrame("Frame", nil, dialog)
+    body:SetPoint("TOPLEFT", 1, -1)
+    body:SetPoint("BOTTOMRIGHT", -1, 1)
+    fill(body, 0.08, 0.08, 0.08)
+
+    local title = label(body, "", "GameFontNormalLarge", 20, -18)
+    title:SetTextColor(1, 0.94, 0.88)
+    label(body, "Getting started", "GameFontNormal", 20, -62)
+    label(body, "Changelog", "GameFontNormal", 340, -62)
+
+    local guide = label(body, table.concat({
+        "|cffffa45cGeneral|r\nSet the default text size, scroll speed and filters.",
+        "|cffffa45cText Areas|r\nChoose what appears and how it looks. Click Move text areas to drag them into place.",
+        "|cffffa45cProfiles|r\nSave a setup and choose which profile each character uses.",
+    }, "\n\n"), "GameFontHighlight", 20, -87)
+    guide:SetWidth(280)
+    guide:SetJustifyH("LEFT")
+    guide:SetWordWrap(true)
+
+    local notes = label(body, table.concat({
+        "|cffffa45c0.3.14|r\nAdded the welcome guide and in-game changelog.",
+        "|cffffa45c0.3.13|r\nGrouped dashboard settings and clarified profile actions.",
+        "|cffffa45c0.3.12|r\nAdded minimap button visibility and support for round and square minimaps.",
+    }, "\n\n"), "GameFontHighlight", 340, -87)
+    notes:SetWidth(285)
+    notes:SetJustifyH("LEFT")
+    notes:SetWordWrap(true)
+
+    button(body, "Got it", 92, 536, -288, function()
+        BattleTextDB.lastSeenWelcomeVersion = version
+        overlay:Hide()
+    end)
+
+    function overlay:ShowOnFirstOpen()
+        local lastSeen = BattleTextDB.lastSeenWelcomeVersion
+        if lastSeen ~= version then
+            title:SetText(type(lastSeen) == "string" and ("What's new in BattleText " .. version)
+                or "Welcome to BattleText")
+            self:Show()
+        end
+    end
+
+    function overlay:ShowHelp()
+        title:SetText("BattleText help")
+        self:Show()
+    end
+
+    return overlay
+end
+
 local function slider(parent, name, y, minimum, maximum, step, change, x, width)
     x = x or 16
     local caption = label(parent, name, "GameFontHighlight", x, y)
@@ -354,12 +417,17 @@ function BT.InitializeSettings()
     local metadata = C_AddOns and C_AddOns.GetAddOnMetadata
     local author = metadata and metadata(addonName, "Author") or "OberstNox"
     local version = metadata and metadata(addonName, "Version")
+    local welcome = createWelcomeDialog(panel, version or "unknown")
     label(header, "by " .. author, "GameFontHighlightSmall", 18, -32):SetTextColor(0.67, 0.67, 0.67)
     if version then
-        label(header, "v" .. version, "GameFontHighlightSmall", 708, -22):SetTextColor(0.67, 0.67, 0.67)
+        label(header, "v" .. version, "GameFontHighlightSmall", 632, -22):SetTextColor(0.67, 0.67, 0.67)
     end
     local active = label(header, "", "GameFontHighlight", 152, -21)
+    active:SetWidth(464)
+    active:SetJustifyH("LEFT")
+    active:SetWordWrap(false)
     active:SetTextColor(0.80, 0.80, 0.80)
+    button(header, "Help", 66, 704, -14, function() welcome:ShowHelp() end)
     button(header, CLOSE or "Close", 62, 780, -14, function() panel:Hide() end)
     tinsert(UISpecialFrames, panel:GetName())
 
@@ -696,8 +764,12 @@ function BT.InitializeSettings()
         end
         refreshStatus()
     end)
-    panel:SetScript("OnShow", restartPreview)
+    panel:SetScript("OnShow", function()
+        restartPreview()
+        welcome:ShowOnFirstOpen()
+    end)
     panel:SetScript("OnHide", function()
+        welcome:Hide()
         stopDashboardDrag()
         for _, renderer in pairs(renderers) do
             renderer:Clear()

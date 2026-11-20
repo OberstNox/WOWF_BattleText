@@ -8,6 +8,11 @@ Type `/battletext` to open the dashboard. **General** controls text size, scroll
 
 Use the movement button to cycle through **Up**, **Down** and **Arc**. **Arc** bends damage text outward and downward while the other areas scroll straight down.
 
+## 0.3.14
+
+- The dashboard opens with a getting-started guide and changelog the first time you use it. Click **Got it** to acknowledge the installed version across characters and profiles.
+- After an update, the changelog appears the next time you open the dashboard. Use **Help** in the title bar to reopen the guide and changelog.
+
 ## 0.3.13
 
 - **General** separates shared combat-text settings, filtering, and account-wide interface controls. **Text Areas** separates the area list and individual settings from the screen layout actions.
