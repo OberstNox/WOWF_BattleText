@@ -100,7 +100,6 @@ local nextMotion = { up = "down", down = "arc", arc = "up", circleDown = "up" }
 
 local previewAmounts = {
     incoming = { 162, 486 },
-    outgoing = { 304, 912 },
     healing = { 214, 642 },
 }
 
@@ -124,11 +123,6 @@ local function showSamples(renderers, sequence)
         renderers.incoming:ShowOutcome("Dodge")
     else
         renderers.incoming:ShowAmount(critical and 486 or 162, critical)
-    end
-    if sequence % 4 == 2 then
-        renderers.outgoing:ShowOutcome("Parry")
-    else
-        renderers.outgoing:ShowAmount(critical and 912 or 304, critical)
     end
     renderers.healing:ShowAmount(critical and 642 or 214, critical)
     if sequence % 4 == 1 then
@@ -201,18 +195,20 @@ local function button(parent, name, width, x, y, onClick, font)
 end
 
 local playerCombatText = "enableFloatingCombatText"
+local playerDamageCVar = "floatingCombatTextCombatDamage_v2"
+local petMeleeCVar = "floatingCombatTextPetMeleeDamage_v2"
+local petSpellCVar = "floatingCombatTextPetSpellDamage_v2"
 local wowCombatTextCVars = {
     playerCombatText,
-    "floatingCombatTextCombatDamage_v2",
     "floatingCombatTextCombatHealing_v2",
     "floatingCombatTextCombatHealingAbsorbSelf_v2",
     "floatingCombatTextCombatHealingAbsorbTarget_v2",
-    "floatingCombatTextPetMeleeDamage_v2",
-    "floatingCombatTextPetSpellDamage_v2",
+    petMeleeCVar,
+    petSpellCVar,
 }
 
 local function getCombatTextCVar(name)
-    local ok, value = pcall(C_CVar.GetCVar, name)
+    local ok, value = pcall(C_CVar and C_CVar.GetCVar, name)
     if ok and not BT.secret(value) and (value == "0" or value == "1") then
         return value
     end
@@ -229,8 +225,49 @@ local function setCombatTextCVar(name, value)
     return getCombatTextCVar(name) == value, name == playerCombatText and not useSetting
 end
 
+local function forgetPreviousCVar(name)
+    local previous = BattleTextDB.wowCombatTextPrevious
+    if type(previous) == "table" then
+        previous[name] = nil
+        BattleTextDB.wowCombatTextPrevious = next(previous) and previous or nil
+    end
+end
+
+local function restorePlayerDamage()
+    local previous = BattleTextDB.wowCombatTextPrevious
+    if type(previous) ~= "table" or previous[playerDamageCVar] ~= "1"
+        or (InCombatLockdown and InCombatLockdown()) then
+        return
+    end
+    -- Earlier versions could hide WoW's own hit numbers when BattleText showed target damage.
+    local value = getCombatTextCVar(playerDamageCVar)
+    if value == "1" or (value == "0" and setCombatTextCVar(playerDamageCVar, "1")) then
+        forgetPreviousCVar(playerDamageCVar)
+    end
+end
+
+local function showPlayerHits()
+    if InCombatLockdown and InCombatLockdown() then
+        return "Change WoW damage numbers after combat ends."
+    end
+    local succeeded = true
+    for _, name in ipairs({ playerDamageCVar, petMeleeCVar, petSpellCVar }) do
+        local value = getCombatTextCVar(name)
+        local wanted = name == playerDamageCVar and "1" or "0"
+        if value == wanted or (value and setCombatTextCVar(name, wanted)) then
+            forgetPreviousCVar(name)
+        else
+            succeeded = false
+        end
+    end
+    if succeeded then
+        return "WoW player damage numbers enabled. Pet damage numbers are off."
+    end
+    return "Some WoW damage number settings could not be changed."
+end
+
 local function wowCombatTextAction()
-    return BattleTextDB.wowCombatTextPrevious and "Restore WoW combat text" or "Hide WoW combat text"
+    return BattleTextDB.wowCombatTextPrevious and "Restore WoW combat text" or "Hide other WoW text"
 end
 
 local function changeWoWCombatText()
@@ -243,8 +280,12 @@ local function changeWoWCombatText()
 
     local previous = BattleTextDB.wowCombatTextPrevious
     local restoring = type(previous) == "table" and next(previous) ~= nil
-    previous = restoring and previous or {}
+    restorePlayerDamage()
+    previous = restoring and BattleTextDB.wowCombatTextPrevious or {}
     local failed, needsReload
+    if previous[playerDamageCVar] == "1" then
+        failed = true
+    end
     for _, name in ipairs(wowCombatTextCVars) do
         local value = getCombatTextCVar(name)
         if restoring then
@@ -283,7 +324,7 @@ local function changeWoWCombatText()
     if needsReload then
         return "Type /reload to refresh WoW's combat text."
     end
-    return restoring and "WoW combat text restored." or "WoW combat text hidden.", true
+    return restoring and "WoW combat text restored." or "Other WoW combat text hidden.", true
 end
 
 local function createWelcomeDialog(panel, version, changeCombatText)
@@ -306,7 +347,7 @@ local function createWelcomeDialog(panel, version, changeCombatText)
 
     local title = label(body, "", "GameFontNormalLarge", 20, -18)
     title:SetTextColor(1, 0.94, 0.88)
-    label(body, "BattleText scrolls damage, healing, XP, loot and combat status around your character.",
+    label(body, "BattleText scrolls incoming damage, healing, XP, loot and combat status around your character.",
         "GameFontHighlight", 20, -48)
     label(body, "Getting started", "GameFontNormal", 20, -82)
     label(body, "Changelog", "GameFontNormal", 340, -82)
@@ -322,16 +363,16 @@ local function createWelcomeDialog(panel, version, changeCombatText)
 
     local notes = label(body, table.concat({
         "|cffffa45c1.0 - Initial release|r",
-        "Customizable combat text with separate areas for damage, healing, XP, loot and combat status.",
+        "Customizable areas for incoming damage, healing, XP, loot and combat status.",
         "Move text areas, switch profiles by character and preview changes in the dashboard.",
         "Open the dashboard from the minimap, the WoW AddOns menu or /battletext.",
-        "Choose whether to show WoW's combat text at first login.",
+        "WoW displays your hits above the target.",
     }, "\n\n"), "GameFontHighlight", 340, -106)
     notes:SetWidth(285)
     notes:SetJustifyH("LEFT")
     notes:SetWordWrap(true)
 
-    label(body, "WoW's combat text can show a second set of numbers. Change this anytime in General > Interface.",
+    label(body, "Your hit numbers use WoW's display. Manage other combat text in General > Interface.",
         "GameFontHighlightSmall", 20, -278)
     local feedback = label(body, "", "GameFontHighlightSmall", 20, -302)
     local dismiss = button(body, "Keep WoW combat text", 174, 268, -332, function()
@@ -492,8 +533,9 @@ local function makeHandle(area, preview)
 end
 
 function BT.InitializeSettings()
+    restorePlayerDamage()
     local panel = CreateFrame("Frame", "BattleTextSettings", UIParent)
-    panel:SetSize(858, 420)
+    panel:SetSize(858, 450)
     panel:SetPoint("CENTER")
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
@@ -572,12 +614,12 @@ function BT.InitializeSettings()
 
     local sidebar = CreateFrame("Frame", nil, panel)
     sidebar:SetPoint("TOPLEFT", 16, -66)
-    sidebar:SetSize(120, 310)
+    sidebar:SetSize(120, 340)
     fill(sidebar, 0.15, 0.15, 0.15)
 
     local preview = CreateFrame("Frame", nil, panel)
     preview:SetPoint("TOPLEFT", 514, -66)
-    preview:SetSize(328, 310)
+    preview:SetSize(328, 340)
     fill(preview, 0.055, 0.055, 0.055)
     label(preview, "Live preview", "GameFontHighlight", 15, -14)
     local previewCaption = label(preview, "", "GameFontHighlightSmall", 15, -37)
@@ -591,7 +633,7 @@ function BT.InitializeSettings()
     local restartPreview, refreshArea
     for index, title in ipairs({ "General", "Text Areas", "Profiles" }) do
         local page = CreateFrame("Frame", nil, panel)
-        page:SetSize(350, 310)
+        page:SetSize(350, 340)
         page:SetPoint("TOPLEFT", 150, -66)
         fill(page, 0.055, 0.055, 0.055)
         pages[index] = page
@@ -630,6 +672,11 @@ function BT.InitializeSettings()
     label(general, "Account-wide", "GameFontHighlightSmall", 79, -258):SetTextColor(0.67, 0.67, 0.67)
     combatTextButton = button(general, wowCombatTextAction(), 168, 166, -275, applyCombatTextChoice,
         "GameFontHighlightSmall")
+    button(general, "Show only player hits", 168, 166, -305, function()
+        combatTextMessage = showPlayerHits()
+        combatTextButton:SetText(wowCombatTextAction())
+        refreshStatus()
+    end, "GameFontHighlightSmall")
 
     local handles, renderers, worldPreview = {}, {}, {}
     local moving = CreateFrame("Frame", nil, UIParent)
@@ -723,7 +770,7 @@ function BT.InitializeSettings()
     local defaultSize = label(areasPage, "", "GameFontHighlightSmall", 270, -238)
     local circleToggle
     local function circleEnabled()
-        return BT.db.areas.incoming.motion == "circleDown" or BT.db.areas.outgoing.motion == "circleDown"
+        return BT.db.areas.incoming.motion == "circleDown"
     end
     refreshArea = function()
         local saved = BT.db.areas[selectedArea.key]
@@ -731,7 +778,6 @@ function BT.InitializeSettings()
         visible:SetChecked(saved.enabled)
         motion:SetText(motionLabels[saved.motion])
         color:SetColorTexture(unpack(saved.rgb))
-        swatch:SetText(selectedArea.criticalRGB and "Normal hit color" or "Text color")
         useDefault:SetEnabled(saved.size ~= nil)
         defaultSize:SetFormattedText("Default: %g", BT.db.size)
         setAreaSize(saved.size or BT.db.size)
@@ -793,7 +839,7 @@ function BT.InitializeSettings()
     local function updateLayout()
         if not draggingDashboard then
             local width, height = UIParent:GetWidth(), UIParent:GetHeight()
-            local scale = math.min(1, width / 882, height / 444)
+            local scale = math.min(1, width / (panel:GetWidth() + 24), height / (panel:GetHeight() + 24))
             if scale > 0 then
                 panel:SetScale(scale)
                 local saved = BattleTextDB.dashboardPosition
@@ -822,7 +868,7 @@ function BT.InitializeSettings()
     display:SetScript("OnEvent", updateLayout)
 
     local refreshProfiles = BT.InitializeProfilePage(profilesPage, label, button)
-    local status = label(panel, "", "GameFontHighlightSmall", 18, -391)
+    local status = label(panel, "", "GameFontHighlightSmall", 18, -421)
     status:SetWidth(820)
     status:SetJustifyH("LEFT")
     status:SetTextColor(0.73, 0.73, 0.73)
@@ -831,16 +877,10 @@ function BT.InitializeSettings()
             status:SetText(combatTextMessage)
         elseif not BT.hasCombatText and not BT.hasUnitCombat then
             status:SetText("Live damage and healing received are unavailable on this client.")
-        elseif activePage == 2 and selectedArea.key == "outgoing" then
-            if not BT.hasTargetDamage then
-                status:SetText("NPC target damage is unavailable on this client.")
-            elseif BT.restricted.outgoing then
-                status:SetText("Forever withheld some NPC damage amounts. This area can include hits from pets and other players.")
-            else
-                status:SetText("NPC target damage can include hits from pets and other players.")
-            end
         elseif BT.restricted.incoming or BT.restricted.healing then
             status:SetText("Forever withheld some incoming damage or healing amounts.")
+        elseif activePage == 1 then
+            status:SetText("Outgoing hits use WoW's damage numbers.")
         else
             status:SetText("")
         end
@@ -868,22 +908,16 @@ function BT.InitializeSettings()
         local area = activePage == 2 and selectedArea or BT.areas[(sequence - 1) % #BT.areas + 1]
         local critical = activePage == 2 and sequence % 2 == 0
             or activePage ~= 2 and math.floor((sequence - 1) / #BT.areas) % 2 == 1
-        local sampleCycle = activePage == 2 and sequence or math.floor((sequence - 1) / #BT.areas) + 1
-        local showParry = area.key == "outgoing" and sampleCycle % 3 == 0
         local caption = area.label
         local amounts = previewAmounts[area.key]
         if not BT.db.areas[area.key].enabled then
             caption = caption .. " (hidden)"
-        elseif not showParry and amounts and amounts[critical and 2 or 1] < BT.db.minimumAmount then
+        elseif amounts and amounts[critical and 2 or 1] < BT.db.minimumAmount then
             caption = caption .. " (below minimum)"
         end
         previewCaption:SetText(caption)
         previewRenderer = renderers[area.key]
-        if showParry then
-            previewRenderer:ShowOutcome("Parry")
-        else
-            showAreaSample(previewRenderer, area, critical)
-        end
+        showAreaSample(previewRenderer, area, critical)
         refreshStatus()
     end)
     panel:SetScript("OnShow", function()

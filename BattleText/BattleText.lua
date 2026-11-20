@@ -2,8 +2,6 @@ local addonName, BT = ...
 
 BT.areas = {
     { key = "incoming", label = "Incoming damage", x = -245, y = 45, rgb = { 1, 0.48, 0.45 }, format = "-%d", circleSide = -1 },
-    { key = "outgoing", label = "NPC target damage", x = 245, y = 45, rgb = { 1, 1, 1 },
-        criticalRGB = { 1, 0.86, 0.12 }, format = "%d", circleSide = 1 },
     { key = "healing", label = "Healing received", x = 0, y = -165, rgb = { 0.38, 0.93, 0.72 }, format = "+%d" },
     { key = "experience", label = "XP gained", x = 0, y = 135, rgb = { 0.77, 0.62, 1 } },
     { key = "loot", label = "Loot received", x = 0, y = 225, rgb = { 1, 0.88, 0.56 } },
@@ -60,9 +58,6 @@ function BT.NormalizeProfile(profile)
     for _, area in ipairs(BT.areas) do
         local saved = tableOrEmpty(db.areas[area.key])
         local rgb = tableOrEmpty(saved.rgb)
-        if not db.damageColorsUpdated and area.key == "outgoing" and rgb[1] == 1 and rgb[2] == 0.79 and rgb[3] == 0.43 then
-            rgb = area.rgb
-        end
         saved.rgb = {}
         for i = 1, 3 do
             saved.rgb[i] = number(rgb[i], area.rgb[i], 0, 1)
@@ -86,7 +81,6 @@ function BT.NormalizeProfile(profile)
         db.areas[area.key] = saved
     end
     db.scrollDown = nil
-    db.damageColorsUpdated = true
     return db
 end
 
@@ -97,7 +91,7 @@ local function style(line, saved, scale)
         line.fontSize = size
         line.height = nil
     end
-    line.text:SetTextColor(unpack(line.criticalColor or saved.rgb))
+    line.text:SetTextColor(unpack(saved.rgb))
 end
 
 local function recycle(renderer, index)
@@ -204,7 +198,6 @@ function BT.CreateRenderer(parent, area, scale, circleScale)
             end
         end
         line.emphasis = emphasis or 1
-        line.criticalColor = critical and area.criticalRGB or nil
         line.protected = secret(value)
         line.height = nil
         style(line, saved, scale)
@@ -339,61 +332,9 @@ local function showLive(key, amount, critical)
     end
 end
 
-local targetDamage = { events = 0, wounds = 0, accepted = 0 }
-
 local function register(method, frame, event, ...)
     local ok, registered = pcall(method, frame, event, ...)
     return ok and registered == true
-end
-
-local function registerTargetDamage()
-    local targetEvents = CreateFrame("Frame")
-    BT.hasTargetDamage = register(targetEvents.RegisterUnitEvent, targetEvents, "UNIT_COMBAT", "target")
-    if not BT.hasTargetDamage then
-        BT.hasTargetDamage = register(targetEvents.RegisterEvent, targetEvents, "UNIT_COMBAT")
-    end
-    targetEvents:RegisterEvent("PLAYER_TARGET_CHANGED")
-    local knownNPC
-    local function checkTarget()
-        local attackable = UnitCanAttack("player", "target")
-        local playerControlled = UnitPlayerControlled("target")
-        if (not secret(attackable) and not attackable) or (not secret(playerControlled) and playerControlled) then
-            knownNPC = false
-        elseif not secret(attackable) and not secret(playerControlled) then
-            knownNPC = true
-        end
-    end
-    checkTarget()
-    targetEvents:SetScript("OnEvent", function(_, event, unit, action, flag, amount)
-        if event == "PLAYER_TARGET_CHANGED" then
-            knownNPC = nil
-            checkTarget()
-            return
-        end
-        if secret(unit) or unit ~= "target" then
-            return
-        end
-        targetDamage.events = targetDamage.events + 1
-        if secret(action) or type(action) ~= "string" then
-            return
-        end
-        local outcome = outcomes[action]
-        if action == "WOUND" then
-            targetDamage.wounds = targetDamage.wounds + 1
-        elseif not outcome then
-            return
-        end
-        checkTarget()
-        if not knownNPC then
-            return
-        end
-        if outcome then
-            BT.live.outgoing:ShowOutcome(outcome)
-        else
-            targetDamage.accepted = targetDamage.accepted + 1
-            showLive("outgoing", amount, not secret(flag) and flag == "CRITICAL")
-        end
-    end)
 end
 
 local events = CreateFrame("Frame")
@@ -429,7 +370,6 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
             renderer.frame:SetPoint("CENTER", UIParent, "CENTER", saved.x, saved.y)
             BT.live[area.key] = renderer
         end
-        registerTargetDamage()
         loadLootPatterns()
         self:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN")
         self:RegisterEvent("CHAT_MSG_LOOT")
@@ -445,12 +385,7 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         SlashCmdList.BATTLETEXT = function(input)
             local command = (input or ""):match("^%s*(.-)%s*$")
             if command == "status" then
-                local area = BT.db.areas.outgoing
-                print(("BattleText NPC target: %s; area %s; group %s; minimum %g. Events %d, wounds %d, accepted %d. Protected amount rejected: %s."):format(
-                    BT.hasTargetDamage and "registered" or "unavailable", area.enabled and "on" or "off",
-                    IsInGroup() and "yes" or "no", BT.db.minimumAmount,
-                    targetDamage.events, targetDamage.wounds, targetDamage.accepted,
-                    BT.restricted.outgoing and "yes" or "no"))
+                print("BattleText: outgoing hits use WoW's damage numbers. See General > Interface.")
                 return
             end
             if command == "test" then
@@ -517,7 +452,8 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
             end
             showLive(info[1], value, info[3])
         end
-    elseif event == "UNIT_COMBAT" and not secret(action) and type(action) == "string" then
+    elseif event == "UNIT_COMBAT" and not secret(first) and first == "player"
+        and not secret(action) and type(action) == "string" then
         local critical = not secret(descriptor) and descriptor == "CRITICAL"
         if action == "WOUND" then
             showLive("incoming", amount, critical)
