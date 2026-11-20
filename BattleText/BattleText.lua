@@ -397,6 +397,15 @@ local function registerTargetDamage()
 end
 
 local events = CreateFrame("Frame")
+local waitingForWelcome
+
+local function showWelcomeWhenReady()
+    if waitingForWelcome and not (InCombatLockdown and InCombatLockdown()) then
+        waitingForWelcome = nil
+        BT.ShowWelcomeOnFirstLogin()
+    end
+end
+
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", function(self, event, first, action, descriptor, amount)
     if event == "ADDON_LOADED" then
@@ -411,6 +420,7 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
     end
     if event == "ADDON_LOADED" or event == "PLAYER_LOGIN" then
         self:UnregisterEvent("PLAYER_LOGIN")
+        local firstInstall = type(BattleTextDB) ~= "table"
         BT.LoadProfiles()
         BT.live = {}
         for _, area in ipairs(BT.areas) do
@@ -462,12 +472,22 @@ events:SetScript("OnEvent", function(self, event, first, action, descriptor, amo
         end
         BT.InitializeSettings()
         BT.InitializeMinimapButton()
+        if firstInstall then
+            self:RegisterEvent("PLAYER_ENTERING_WORLD")
+        end
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        self:UnregisterEvent(event)
+        waitingForWelcome = true
+        showWelcomeWhenReady()
     elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
         BT.live.experience:ShowMessage(first)
     elseif event == "CHAT_MSG_LOOT" then
         showLoot(first)
     elseif BT.combatMessages[event] then
         BT.live.combat:ShowMessage(BT.combatMessages[event])
+        if event == "PLAYER_REGEN_ENABLED" then
+            showWelcomeWhenReady()
+        end
     elseif event == "COMBAT_TEXT_UPDATE" then
         if secret(first) or type(first) ~= "string" then
             return

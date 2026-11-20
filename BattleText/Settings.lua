@@ -200,7 +200,93 @@ local function button(parent, name, width, x, y, onClick, font)
     return control
 end
 
-local function createWelcomeDialog(panel, version)
+local playerCombatText = "enableFloatingCombatText"
+local wowCombatTextCVars = {
+    playerCombatText,
+    "floatingCombatTextCombatDamage_v2",
+    "floatingCombatTextCombatHealing_v2",
+    "floatingCombatTextCombatHealingAbsorbSelf_v2",
+    "floatingCombatTextCombatHealingAbsorbTarget_v2",
+    "floatingCombatTextPetMeleeDamage_v2",
+    "floatingCombatTextPetSpellDamage_v2",
+}
+
+local function getCombatTextCVar(name)
+    local ok, value = pcall(C_CVar.GetCVar, name)
+    if ok and not BT.secret(value) and (value == "0" or value == "1") then
+        return value
+    end
+end
+
+local function setCombatTextCVar(name, value)
+    local setting = Settings and Settings.GetSetting and Settings.GetSetting(name)
+    local useSetting = setting and setting:GetVariableType() == "boolean"
+    if useSetting then
+        pcall(setting.SetValue, setting, value == "1", true)
+    else
+        pcall(C_CVar.SetCVar, name, value)
+    end
+    return getCombatTextCVar(name) == value, name == playerCombatText and not useSetting
+end
+
+local function wowCombatTextAction()
+    return BattleTextDB.wowCombatTextPrevious and "Restore WoW combat text" or "Hide WoW combat text"
+end
+
+local function changeWoWCombatText()
+    if InCombatLockdown and InCombatLockdown() then
+        return "Change WoW combat text after combat ends."
+    end
+    if not (C_CVar and C_CVar.GetCVar and C_CVar.SetCVar) then
+        return "WoW combat text settings are unavailable on this client."
+    end
+
+    local previous = BattleTextDB.wowCombatTextPrevious
+    local restoring = type(previous) == "table" and next(previous) ~= nil
+    previous = restoring and previous or {}
+    local failed, needsReload
+    for _, name in ipairs(wowCombatTextCVars) do
+        local value = getCombatTextCVar(name)
+        if restoring then
+            if previous[name] == "1" then
+                if value == "0" then
+                    local changed, reload = setCombatTextCVar(name, previous[name])
+                    if changed then
+                        previous[name] = nil
+                        needsReload = needsReload or reload
+                    else
+                        failed = true
+                    end
+                elseif value == "1" then
+                    previous[name] = nil
+                else
+                    failed = true
+                end
+            end
+        elseif value == "1" then
+            local changed, reload = setCombatTextCVar(name, "0")
+            if changed then
+                previous[name] = value
+                needsReload = needsReload or reload
+            else
+                failed = true
+            end
+        elseif not value then
+            failed = true
+        end
+    end
+    BattleTextDB.wowCombatTextPrevious = next(previous) and previous or nil
+
+    if failed then
+        return "Some WoW combat text settings could not be changed."
+    end
+    if needsReload then
+        return "Type /reload to refresh WoW's combat text."
+    end
+    return restoring and "WoW combat text restored." or "WoW combat text hidden.", true
+end
+
+local function createWelcomeDialog(panel, version, changeCombatText)
     local overlay = CreateFrame("Frame", "BattleTextWelcome", panel)
     overlay:SetAllPoints(panel)
     overlay:SetFrameLevel(panel:GetFrameLevel() + 15)
@@ -210,7 +296,7 @@ local function createWelcomeDialog(panel, version)
     overlay:Hide()
 
     local dialog = CreateFrame("Frame", nil, overlay)
-    dialog:SetSize(650, 336)
+    dialog:SetSize(650, 380)
     dialog:SetPoint("CENTER")
     fill(dialog, 0.26, 0.26, 0.26)
     local body = CreateFrame("Frame", nil, dialog)
@@ -220,14 +306,16 @@ local function createWelcomeDialog(panel, version)
 
     local title = label(body, "", "GameFontNormalLarge", 20, -18)
     title:SetTextColor(1, 0.94, 0.88)
-    label(body, "Getting started", "GameFontNormal", 20, -62)
-    label(body, "Changelog", "GameFontNormal", 340, -62)
+    label(body, "BattleText scrolls damage, healing, XP, loot and combat status around your character.",
+        "GameFontHighlight", 20, -48)
+    label(body, "Getting started", "GameFontNormal", 20, -82)
+    label(body, "Changelog", "GameFontNormal", 340, -82)
 
     local guide = label(body, table.concat({
         "|cffffa45cGeneral|r\nSet the default text size, scroll speed and filters.",
         "|cffffa45cText Areas|r\nChoose what appears and how it looks. Click Move text areas to drag them into place.",
         "|cffffa45cProfiles|r\nSave a setup and choose which profile each character uses.",
-    }, "\n\n"), "GameFontHighlight", 20, -87)
+    }, "\n\n"), "GameFontHighlight", 20, -106)
     guide:SetWidth(280)
     guide:SetJustifyH("LEFT")
     guide:SetWordWrap(true)
@@ -237,28 +325,48 @@ local function createWelcomeDialog(panel, version)
         "Customizable combat text with separate areas for damage, healing, XP, loot and combat status.",
         "Move text areas, switch profiles by character and preview changes in the dashboard.",
         "Open the dashboard from the minimap, the WoW AddOns menu or /battletext.",
-    }, "\n\n"), "GameFontHighlight", 340, -87)
+        "Choose whether to show WoW's combat text at first login.",
+    }, "\n\n"), "GameFontHighlight", 340, -106)
     notes:SetWidth(285)
     notes:SetJustifyH("LEFT")
     notes:SetWordWrap(true)
 
-    button(body, "Got it", 92, 536, -288, function()
-        BattleTextDB.lastSeenWelcomeVersion = version
+    label(body, "WoW's combat text can show a second set of numbers. Change this anytime in General > Interface.",
+        "GameFontHighlightSmall", 20, -278)
+    local feedback = label(body, "", "GameFontHighlightSmall", 20, -302)
+    local dismiss = button(body, "Keep WoW combat text", 174, 268, -332, function()
         overlay:Hide()
-    end)
+    end, "GameFontHighlightSmall")
+    local combatText = button(body, "", 174, 454, -332, function(self)
+        local message, finished = changeCombatText()
+        if finished then
+            overlay:Hide()
+        else
+            feedback:SetText(message)
+            dismiss:SetText("Got it")
+            self:SetText(wowCombatTextAction())
+        end
+    end, "GameFontHighlightSmall")
+
+    local function open(titleText, isHelp)
+        title:SetText(titleText)
+        feedback:SetText("")
+        dismiss:SetText(isHelp and "Got it" or "Keep WoW combat text")
+        combatText:SetText(wowCombatTextAction())
+        overlay:Show()
+    end
 
     function overlay:ShowOnFirstOpen()
         local lastSeen = BattleTextDB.lastSeenWelcomeVersion
         if lastSeen ~= version then
             local hasSeenRelease = type(lastSeen) == "string" and not lastSeen:match("^0%.")
-            title:SetText(hasSeenRelease and ("What's new in BattleText " .. version) or "Welcome to BattleText")
-            self:Show()
+            open(hasSeenRelease and ("What's new in BattleText " .. version) or "Welcome to BattleText")
+            BattleTextDB.lastSeenWelcomeVersion = version
         end
     end
 
     function overlay:ShowHelp()
-        title:SetText("BattleText help")
-        self:Show()
+        open("BattleText help", true)
     end
 
     return overlay
@@ -418,7 +526,16 @@ function BT.InitializeSettings()
     local metadata = C_AddOns and C_AddOns.GetAddOnMetadata
     local author = metadata and metadata(addonName, "Author") or "OberstNox"
     local version = metadata and metadata(addonName, "Version")
-    local welcome = createWelcomeDialog(panel, version or "unknown")
+    local welcomeVersion = version or "unknown"
+    local combatTextButton, combatTextMessage, refreshStatus
+    local function applyCombatTextChoice()
+        local message, finished = changeWoWCombatText()
+        combatTextButton:SetText(wowCombatTextAction())
+        combatTextMessage = message
+        refreshStatus()
+        return message, finished
+    end
+    local welcome = createWelcomeDialog(panel, welcomeVersion, applyCombatTextChoice)
     label(header, "by " .. author, "GameFontHighlightSmall", 18, -32):SetTextColor(0.67, 0.67, 0.67)
     if version then
         label(header, "v" .. version, "GameFontHighlightSmall", 632, -22):SetTextColor(0.67, 0.67, 0.67)
@@ -510,7 +627,9 @@ function BT.InitializeSettings()
         end
     end)
     minimapButton:SetChecked(BattleTextDB.showMinimapButton ~= false)
-    label(general, "Account-wide", "GameFontHighlightSmall", 184, -284):SetTextColor(0.67, 0.67, 0.67)
+    label(general, "Account-wide", "GameFontHighlightSmall", 79, -258):SetTextColor(0.67, 0.67, 0.67)
+    combatTextButton = button(general, wowCombatTextAction(), 168, 166, -275, applyCombatTextChoice,
+        "GameFontHighlightSmall")
 
     local handles, renderers, worldPreview = {}, {}, {}
     local moving = CreateFrame("Frame", nil, UIParent)
@@ -707,8 +826,10 @@ function BT.InitializeSettings()
     status:SetWidth(820)
     status:SetJustifyH("LEFT")
     status:SetTextColor(0.73, 0.73, 0.73)
-    local function refreshStatus()
-        if not BT.hasCombatText and not BT.hasUnitCombat then
+    refreshStatus = function()
+        if activePage == 1 and combatTextMessage then
+            status:SetText(combatTextMessage)
+        elseif not BT.hasCombatText and not BT.hasUnitCombat then
             status:SetText("Live damage and healing received are unavailable on this client.")
         elseif activePage == 2 and selectedArea.key == "outgoing" then
             if not BT.hasTargetDamage then
@@ -771,6 +892,7 @@ function BT.InitializeSettings()
     end)
     panel:SetScript("OnHide", function()
         welcome:Hide()
+        combatTextMessage = nil
         stopDashboardDrag()
         for _, renderer in pairs(renderers) do
             renderer:Clear()
@@ -796,6 +918,12 @@ function BT.InitializeSettings()
         restartPreview()
     end
     BT.RefreshProfile()
+
+    function BT.ShowWelcomeOnFirstLogin()
+        if BattleTextDB.lastSeenWelcomeVersion ~= welcomeVersion then
+            panel:Show()
+        end
+    end
 
     function BT.ToggleSettings(forceOpen)
         if moving:IsShown() then
