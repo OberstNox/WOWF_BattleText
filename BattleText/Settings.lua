@@ -233,9 +233,10 @@ local function createWelcomeDialog(panel, version)
     guide:SetWordWrap(true)
 
     local notes = label(body, table.concat({
-        "|cffffa45c0.3.14|r\nAdded the welcome guide and in-game changelog.",
-        "|cffffa45c0.3.13|r\nGrouped dashboard settings and clarified profile actions.",
-        "|cffffa45c0.3.12|r\nAdded minimap button visibility and support for round and square minimaps.",
+        "|cffffa45c1.0 - Initial release|r",
+        "Customizable combat text with separate areas for damage, healing, XP, loot and combat status.",
+        "Move text areas, switch profiles by character and preview changes in the dashboard.",
+        "Open the dashboard from the minimap, the WoW AddOns menu or /battletext.",
     }, "\n\n"), "GameFontHighlight", 340, -87)
     notes:SetWidth(285)
     notes:SetJustifyH("LEFT")
@@ -249,8 +250,8 @@ local function createWelcomeDialog(panel, version)
     function overlay:ShowOnFirstOpen()
         local lastSeen = BattleTextDB.lastSeenWelcomeVersion
         if lastSeen ~= version then
-            title:SetText(type(lastSeen) == "string" and ("What's new in BattleText " .. version)
-                or "Welcome to BattleText")
+            local hasSeenRelease = type(lastSeen) == "string" and not lastSeen:match("^0%.")
+            title:SetText(hasSeenRelease and ("What's new in BattleText " .. version) or "Welcome to BattleText")
             self:Show()
         end
     end
